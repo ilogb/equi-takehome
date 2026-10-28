@@ -391,3 +391,14 @@ covers the rare case. Recommendation (a) overruled.
 **Outcome.** `.xlsx` is in the MVP. Each sheet is read with pandas and handled
 like a CSV, and each sheet is kept as a printed table. This reverses Claude's
 call in spec §13 #2.
+
+### Q26 — UI library
+**User (verbatim).**
+> is there a ui library you want to use tailwind or something else so that I
+> can see better mocks and in this project
+**Options.** Tailwind + shadcn/ui (recommended) · Mantine · Ant Design · MUI.
+**Answer.** Tailwind + shadcn/ui (Recommended).
+**Outcome.** The React app uses Tailwind CSS and shadcn/ui (Radix-based
+components copied into the repo), with TanStack Table for the Data table.
+The mockups are rebuilt with the same Tailwind classes and shadcn component
+markup, so what is approved looks like what gets built.
