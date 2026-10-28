@@ -304,6 +304,58 @@ table. Search and Ask merge into **one search box with a mode toggle**:
 the intelligent mode answers a question and can return data tables, via the
 Q&A loop from Q10.
 
+## Outside input — email from Equi (2026-10-28)
+
+The user pasted an email from Equi in reply to the fixture set. Relevant
+lines, verbatim:
+> The set looks great and is in line with what we had in mind. A mix of real
+> factsheets and synthetic files that cover the gaps is a smart approach.
+>
+> For context, a couple of real-world problems we run into are account
+> statements mixed in with factsheets, and scanned or image-only PDFs that
+> have no text layer. There's no pressure to add either one.
+>
+> We're most interested in the decisions you make and how you explain them in
+> the walkthrough.
+
+(The email also asks the user to schedule time with a technical contractor;
+that is outside this log.)
+
+## Round 5 (Q21–Q22): Equi's two cases
+
+### Q21 — Account statements
+**Question.** Equi mentions account statements mixed in with factsheets.
+Handle that in the MVP?
+**Answers (verbatim, over several follow-ups).**
+> the fidelity has that? I think I opened it and it was jsut a tutorial?
+>
+> I asked about the fixutres we created
+>
+> whats IB statement?
+>
+> html is not a good syntehnica
+**Clarifications Claude gave.** None of the 11 committed fixtures is a
+statement. The Fidelity sample has labels but no extractable numbers, and the
+Merrill file is a tutorial guide. "IB" is Interactive Brokers, whose sample
+HTML activity statement for a fictional "ACME Fund, L.P." (June 2017) has a
+real statement's numbers.
+**Final answer.** Synthetic PDF statement, extract (Recommended).
+**Outcome.** No real statement is added: the Interactive Brokers HTML is
+dropped because, in the user's words, "html is not a good" example. Claude
+generates one synthetic multi-page PDF account statement (fictional
+custodian) with a truth file. The app labels it `statement` and extracts
+account value and period return as their own measures, kept apart from fund
+returns.
+
+### Q22 — Scanned / image-only PDFs
+**Question.** Scanned / image-only PDFs with no text layer: handle in the MVP?
+**Options.** Yes, via the LLM's vision (recommended) · Detect and flag only · Skip.
+**Answer.** Detect and flag only.
+**Follow-up.** Add the scanned Al Meezan PDF to fixtures? **Answer.** No.
+**Outcome.** The app detects pages with no text layer and marks the file
+"scanned: no text" without extracting it. It is tested with a tiny generated
+image-only PDF, not a real file. Recommendation (vision) overruled.
+
 ## Next step
 A rendered UI mockup (per the user's global rule: mockup before spec), then
 the v2 spec, recording the chosen mockup variant.
