@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from app.jobs.queue import PermanentError, backoff, is_claimable, next_state
+from app.jobs.queue import MAX_ATTEMPTS, PermanentError, backoff, is_claimable, next_state, reclaim_exhausted
 from app.llm.base import IncompleteResponse, LLMError
 
 NOW = datetime(2026, 10, 28, 12, 0, tzinfo=timezone.utc)
@@ -48,3 +48,11 @@ def test_claim_predicate():
     assert not is_claimable("running", NOW, NOW, NOW)  # lease_until < now is strict
     assert not is_claimable("done", past, past, NOW)
     assert not is_claimable("failed", past, past, NOW)
+
+
+def test_reclaim_cap():
+    assert MAX_ATTEMPTS == 4
+    assert not reclaim_exhausted("running", 3)
+    assert reclaim_exhausted("running", 4)
+    assert reclaim_exhausted("running", 9)
+    assert not reclaim_exhausted("queued", 9)

@@ -63,3 +63,7 @@ All need Postgres (`tests/integration/test_queue.py`, injected `now`). Backoff s
 - `test_non_retryable_fails_immediately`: `fail` with `LLMError(retryable=False)` (and `PermanentError`) on attempt 1 sets job `failed` and file `failed` with the error text.
 - `test_expired_lease_is_reclaimed`: a `running` job with `lease_until` in the past is claimed again (attempts incremented); one with `lease_until` in the future is not.
 - `test_process_one_marks_done`: with `FakeDriveSource`/`FakeLLM`, `process_one` on a queued job leaves the job `done`; with `source_for` raising `PermanentError`, job and file end `failed` and the worker returns `True`.
+- `test_enqueue_race`: two sessions call `enqueue(file_id)` concurrently (second blocks on the `source_file` row lock until the first commits); exactly one returns a `Job`, the other `None`, and one unfinished job row exists.
+- `test_exhausted_lease_fails`: a `running` job with expired lease and `attempts == 4` is not returned by `claim`; it becomes `failed` with `last_error == "worker lost the job too many times"` and its file is `failed`; the next runnable job (if any) is claimed in the same call.
+- `test_fenced_complete_and_fail`: after worker A claims and its lease expires, worker B reclaims; `complete(job, lease=A's lease)` / `fail(..., lease=A's lease)` return `False` and leave B's job state unchanged.
+- `test_missing_file_fails_permanently`: a job whose `source_file` row is gone ends `failed` after one attempt via `process_one`.

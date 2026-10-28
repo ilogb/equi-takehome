@@ -1,6 +1,7 @@
 """Worker loop: `python -m app.jobs.worker`."""
 
 import logging
+import signal
 import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -37,11 +38,14 @@ def process_one(
         session.commit()
         if job is None:
             return False
-        job_id = job.id
+        job_id, lease = job.id, job.lease_until
         try:
             file = session.get(SourceFile, job.source_file_id)
+            if file is None:
+                raise PermanentError(f"source file {job.source_file_id} no longer exists")
             process_file(session, file, source_for(session, file), llm, settings)
-            complete(session, job)
+            if not complete(session, job, lease):
+                log.warning("job %s lease lost before completion; ignoring result", job_id)
             session.commit()
         except Exception as err:
             if getattr(err, "retryable", None) is not False:
@@ -50,7 +54,8 @@ def process_one(
                 log.warning("job %s failed permanently: %s", job_id, err)
             session.rollback()
             job = session.get(Job, job_id)
-            fail(session, job, err, _now())
+            if job is None or not fail(session, job, err, _now(), lease):
+                log.warning("job %s lease lost before failure was recorded; ignoring", job_id)
             session.commit()
         return True
 
@@ -108,12 +113,14 @@ def run_worker(
     for t in threads:
         t.start()
     log.info("worker started: %d threads", len(threads))
+    signal.signal(signal.SIGTERM, lambda *_: stop.set())
     try:
         while not stop.wait(1.0):
             pass
     except KeyboardInterrupt:
         log.info("stopping")
     finally:
+        log.info("shutting down")
         stop.set()
         for t in threads:
             t.join(timeout=5)

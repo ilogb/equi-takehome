@@ -31,7 +31,11 @@ def _prompt(name: str) -> str:
 class OpenAIProvider:
     def __init__(self, settings: Settings, client: OpenAI | None = None):
         self.settings = settings
-        self.client = client or OpenAI(api_key=settings.openai_api_key, timeout=TIMEOUT_SECONDS)
+        self.client = client or OpenAI(
+            api_key=settings.openai_api_key,
+            timeout=TIMEOUT_SECONDS,
+            max_retries=0,  # the job queue owns retries; SDK retries would outlive the lease
+        )
 
     def extract(
         self, *, file_name: str, pdf: bytes | None, text: str | None, known_funds: list[str]
