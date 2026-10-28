@@ -387,4 +387,8 @@ needs_review) · `chunk` (document, kind, text, tsvector, embedding vector) ·
 
 ## 14. Open
 
-- Anything the builder check raises that only the user can answer.
+Nothing. The builder check's four questions were settled: share class in
+the row key (Claude's call, §13 #9), Google app status (Q30), eval as a report
+(Q31), CapRover deploy at the end (Q32). Two things are left for the spike to
+confirm: unverified Production OAuth with `drive.readonly`, and the default
+OpenAI model ids.
