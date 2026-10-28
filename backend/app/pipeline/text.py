@@ -24,6 +24,11 @@ class LoadedText:
     pages: list[str]
 
 
+def _strip_nul(text: str) -> str:
+    """Postgres rejects NUL in text and JSON columns."""
+    return text.replace("\x00", "")
+
+
 def clean_html(html: str) -> str:
     """Convert HTML to plain text.
 
@@ -51,7 +56,7 @@ def clean_html(html: str) -> str:
         block.append("\n")
     text = soup.get_text("")
     text = re.sub(r"[ \t]*\n[ \t]*", "\n", text)
-    return re.sub(r"\n{2,}", "\n", text).strip()
+    return _strip_nul(re.sub(r"\n{2,}", "\n", text).strip())
 
 
 def eml_body(data: bytes) -> str:
@@ -74,11 +79,11 @@ def load_text(data: bytes, kind: FileKind) -> LoadedText:
         with pdfplumber.open(io.BytesIO(data)) as pdf:
             if len(pdf.pages) > MAX_PDF_PAGES:
                 raise TooManyPages(f"{len(pdf.pages)} pages")
-            return LoadedText(kind, [page.extract_text() or "" for page in pdf.pages])
+            return LoadedText(kind, [_strip_nul(page.extract_text() or "") for page in pdf.pages])
     if kind == "html":
         return LoadedText(kind, [clean_html(data.decode("utf-8", errors="replace"))])
     if kind == "eml":
         body = eml_body(data)
         is_html = "<" in body and re.search(r"<(html|body|p|div|table)\b", body, re.I)
-        return LoadedText(kind, [clean_html(body) if is_html else body.strip()])
+        return LoadedText(kind, [clean_html(body) if is_html else _strip_nul(body.strip())])
     raise ValueError(f"load_text does not handle {kind!r}")

@@ -37,3 +37,18 @@ All need Postgres (`tests/integration/test_store.py`, FakeLLM, recorded extracti
 - `test_share_classes_not_conflicts`: Alderbank A (`0.0312`) and I (`0.0321`) for Jan: no conflict.
 - `test_needs_review_outlier`: a monthly return `"62%"` gives `needs_review=True`, `review_reason == "monthly return beyond ±50%"`, and the file status is `needs_review` (otherwise `done`).
 - `test_chunks_embedded`: every chunk has a 1536-length embedding and a non-empty `tsv`; embedding is batched in groups of 64.
+
+## Task 9
+
+All need Postgres (`tests/integration/test_run.py`, `FakeDriveSource`, `FakeLLM`). Routing, head/tail slicing, tabular extraction and NUL stripping are unit-tested in `tests/unit/test_run.py`.
+
+- `test_pdf_done`: `process_file` on the Man AHL PDF returns `done` (or `needs_review`) and one `document` with rows exists.
+- `test_scanned_no_llm_call`: the image-only PDF returns `scanned_no_text`; the LLM saw zero `extract`/`map_table`/`embed` calls; a `document` row holds the page text and has no chunks.
+- `test_png_unsupported`: mime `image/png` returns `unsupported`, `error` mentions the type, no document.
+- `test_eml_extracted`: Kestrel `.eml` yields a `return` `common_row` with value `0.019`.
+- `test_csv_mapped`: Alderbank CSV yields 29 `common_row`s; one `printed_table` holding the raw cells.
+- `test_document_with_no_rows_is_done_and_searchable`: an extraction with zero tables and rows gives status `done` and chunks exist (search asserted in Task 13).
+- `test_corrupt_pdf_failed`: garbage bytes as a PDF give `failed` with a readable `error` and no exception.
+- `test_conflicts_marked_after_persist`: after two files with differing values for one identity are processed, `common_row.conflict` is true on both (`mark_conflicts` called).
+- `test_llm_error_propagates`: an `LLMError` from the LLM escapes `process_file` and leaves the file status unchanged.
+- `test_nul_text_persists`: a document whose text contained NUL persists without a Postgres error.
