@@ -328,3 +328,37 @@ def main():
     c.expiry=None; c.refresh(Request()); print("\nrefresh with stored refresh_token OK; new access token expires",c.expiry)
 main()
 ```
+
+---
+
+## C (live run, 2026-10-28) — Drive probe run by the user
+
+Run against "Equi Finance Docs" (folder id `1vMG2qvqZ5h74hzdyOstiUwGpslMobKhc`)
+with the OAuth app in **Testing** mode (Q34) and the user as a test user.
+
+- **Consent:** the unverified-app warning appeared and could be passed
+  ("Advanced → Go to …"). Granted scopes included `openid`, `email`,
+  `profile` and `drive.readonly` in one consent.
+- **Refresh token:** present (`access_type=offline`, `prompt=consent`);
+  access token about 3600 s; refreshing with the stored refresh token worked.
+- **userinfo:** returned `email` = the user's account, `email_verified: true`
+  (the allowlist check can key on it).
+- **Folder read:** `files.get` on the folder worked; `files.list` with
+  `'<id>' in parents` returned only the direct child (the `docs` subfolder),
+  confirming subfolders need their own traversal (Q35).
+- **Change polling:** `startPageToken` 149371; poll 1 returned 0 changes in
+  145 ms. After the user dropped `Equi.png` directly into the folder, poll 2
+  returned 1 change in 164 ms, with `parents` populated so the client-side
+  folder filter classified it `IN_FOLDER`. The token advanced to 149374, so
+  Drive skips tokens and the token must always be taken from the response.
+- **Port clash found:** `localhost:8000` resolved to IPv6, where another
+  local Docker app (`trust-ledger-api-1`) was listening; the probe was on
+  IPv4 `127.0.0.1:8000`. **Plan decision:** the app's API defaults to port
+  **8010**, and the local redirect URI uses **127.0.0.1**:
+  `http://127.0.0.1:8010/api/auth/google/callback` (to be added to the
+  Google client).
+- **Python note:** `datetime.utcnow()` is deprecated (Python 3.12); use
+  `datetime.now(UTC)`.
+
+**Status:** the OAuth + Drive hard part is proven end to end, except subfolder
+traversal and the CapRover redirect, which are built in the app.
