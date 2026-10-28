@@ -156,3 +156,46 @@ def test_schemas_are_strict_compatible(model):
                 walk(v)
 
     walk(to_strict_json_schema(model))
+
+
+class StubClient:
+    def __init__(self, *replies):
+        self.responses = StubResponses(replies)
+        self.options: list[dict] = []
+
+    def with_options(self, **kw):
+        self.options.append(kw)
+        return self
+
+
+def call_item(arguments, name="query_rows"):
+    return SimpleNamespace(type="function_call", call_id="c1", name=name, arguments=arguments)
+
+
+def chat_reply(*items):
+    return SimpleNamespace(status="completed", output_text="", incomplete_details=None, output=list(items))
+
+
+def test_chat_timeout_bounds_the_call():
+    stub = StubClient(chat_reply(), chat_reply())
+    p = OpenAIProvider(Settings(openai_api_key="x"), client=stub)
+    p.chat(messages=[], tools=[], timeout=12.5)
+    assert stub.options == [{"timeout": 12.5}]
+    assert stub.responses.requests[0]["model"] == "gpt-6.1-terra"
+    p.chat(messages=[], tools=[])
+    assert stub.options == [{"timeout": 12.5}]  # no override without a timeout
+
+
+def test_chat_malformed_arguments_become_tool_call_error():
+    stub = StubClient(chat_reply(call_item("{not json"), call_item("[1, 2]"), call_item('{"measure": "aum"}')))
+    turn = OpenAIProvider(Settings(openai_api_key="x"), client=stub).chat(messages=[], tools=[])
+    assert [tc.error for tc in turn.tool_calls] == [
+        "arguments were not valid JSON", "arguments must be a JSON object", None,
+    ]  # fmt: skip
+    assert turn.tool_calls[0].arguments == {} and turn.tool_calls[2].arguments == {"measure": "aum"}
+
+
+def test_chat_incomplete_raises_incomplete():
+    stub = StubClient(SimpleNamespace(status="incomplete", output_text="", incomplete_details=None, output=[]))
+    with pytest.raises(IncompleteResponse):
+        OpenAIProvider(Settings(openai_api_key="x"), client=stub).chat(messages=[], tools=[], timeout=5)

@@ -26,6 +26,7 @@ class ToolCall:
     id: str
     name: str
     arguments: dict
+    error: str | None = None  # set when the model's arguments were not a JSON object
 
 
 @dataclass(frozen=True)
@@ -45,4 +46,4 @@ class LLMProvider(Protocol):
 
     def embed(self, texts: list[str]) -> list[list[float]]: ...
 
-    def chat(self, *, messages: list[dict], tools: list[dict]) -> ChatTurn: ...
+    def chat(self, *, messages: list[dict], tools: list[dict], timeout: float | None = None) -> ChatTurn: ...

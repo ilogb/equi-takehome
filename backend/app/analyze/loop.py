@@ -11,11 +11,14 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.analyze.tools import build_tools, call_tool, tool_output
-from app.llm.base import LLMProvider
+from app.llm.base import LLMError, LLMProvider
 from app.models import Document, SourceFile, User
 
 MAX_TOOL_CALLS = 5
 BUDGET_S = 60.0
+MIN_CALL_TIMEOUT_S = 1.0
+_MAX_ID = 2**63  # document ids are BIGINT-range; anything outside is not a document
+UNAVAILABLE = "Couldn't answer right now — try again."
 
 SYSTEM_PROMPT = f"""You answer questions about the user's investment documents (fund factsheets, \
 letters, statements) using tools that query the numbers and text extracted from them.
@@ -94,8 +97,9 @@ def checked_sources(session: Session, user_id: int, raw) -> list[AnalyzeSource]:
         if isinstance(x, bool):
             continue
         if isinstance(x, int) or (isinstance(x, str) and x.isascii() and x.isdigit()):
-            if int(x) not in ids:
-                ids.append(int(x))
+            i = int(x)
+            if 0 < i < _MAX_ID and i not in ids:
+                ids.append(i)
     if not ids:
         return []
     names = {r.id: r.file_name for r in session.execute(known_documents_query(user_id, ids)).all()}
@@ -132,10 +136,15 @@ async def _loop(app: FastAPI, user: User, question: str, llm: LLMProvider, steps
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": question},
     ]
+    clock = asyncio.get_running_loop()
+    deadline = clock.time() + BUDGET_S
     calls = 0
     for _ in range(MAX_TOOL_CALLS + 1):
         offered = tools if calls < MAX_TOOL_CALLS else []
-        turn = await run_in_threadpool(llm.chat, messages=messages, tools=offered)
+        # each model call is bounded by what is left of the budget, so an abandoned call
+        # cannot hold a threadpool worker long after the answer was given up on
+        remaining = max(MIN_CALL_TIMEOUT_S, deadline - clock.time())
+        turn = await run_in_threadpool(llm.chat, messages=messages, tools=offered, timeout=remaining)
         if not turn.tool_calls:
             return turn.text
         if not offered:
@@ -146,6 +155,9 @@ async def _loop(app: FastAPI, user: User, question: str, llm: LLMProvider, steps
             )
             if calls >= MAX_TOOL_CALLS:
                 result = {"error": f"tool call limit of {MAX_TOOL_CALLS} reached; answer with what you have"}
+            elif tc.error:
+                calls += 1
+                result = {"error": f"{tc.name}: {tc.error}"}
             else:
                 calls += 1
                 steps.append(step_label(tc.name, tc.arguments if isinstance(tc.arguments, dict) else {}))
@@ -165,6 +177,8 @@ async def answer_question(
             text=f"This question took longer than {int(BUDGET_S)} seconds to answer. Try a narrower question.",
             steps=steps,
         )
+    except LLMError:  # includes IncompleteResponse; the model is unavailable, not the question
+        return AnalyzeAnswer(text=UNAVAILABLE, steps=steps)
     if final is None:
         return AnalyzeAnswer(
             text=f"I could not reach an answer within {MAX_TOOL_CALLS} tool calls. Try a narrower question.",

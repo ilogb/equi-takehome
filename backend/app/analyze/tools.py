@@ -12,6 +12,7 @@ from app.auth.deps import INTERNAL_TOKEN_HEADER, INTERNAL_USER_HEADER
 TAG = "analyze"
 TOOL_TIMEOUT_S = 30.0
 MAX_TOOL_OUTPUT_CHARS = 60_000
+_SAFE_SEGMENT = re.compile(r"[A-Za-z0-9_-]+")
 
 
 class AnalyzeToolError(Exception):
@@ -77,10 +78,24 @@ def _request_for(app: FastAPI, name: str, args: dict) -> tuple[str, dict]:
         if p["in"] == "path":
             if value is None or value == "":
                 raise AnalyzeToolError(f"{name} needs {p['name']}")
-            path = path.replace("{" + p["name"] + "}", quote(str(value), safe=""))
+            path = path.replace("{" + p["name"] + "}", _path_value(name, p, value))
         elif p["in"] == "query" and value is not None:
             params[p["name"]] = value
     return path, params
+
+
+def _path_value(tool: str, param: dict, value) -> str:
+    """A path segment checked against its schema: integers must be integers, anything else
+    must be [A-Za-z0-9_-]+, so the model cannot steer the request to another route."""
+    if param.get("schema", {}).get("type") == "integer":
+        if isinstance(value, bool) or not (
+            (isinstance(value, int) and value >= 0) or (isinstance(value, str) and value.isascii() and value.isdigit())
+        ):
+            raise AnalyzeToolError(f"{tool}: {param['name']} must be a non-negative integer")
+        return str(int(value))
+    if not isinstance(value, (str, int)) or isinstance(value, bool) or not _SAFE_SEGMENT.fullmatch(str(value)):
+        raise AnalyzeToolError(f"{tool}: {param['name']} has invalid characters")
+    return quote(str(value), safe="")
 
 
 async def call_tool(app: FastAPI, user_id: int, name: str, args: dict) -> dict:
@@ -90,12 +105,16 @@ async def call_tool(app: FastAPI, user_id: int, name: str, args: dict) -> dict:
     except AnalyzeToolError as err:
         return {"error": str(err)}
     headers = {INTERNAL_USER_HEADER: str(user_id), INTERNAL_TOKEN_HEADER: app.state.internal_token}
-    transport = httpx.ASGITransport(app=app)
+    # raise_app_exceptions=False: a route that raises becomes a 500 response, i.e. a tool error
+    # for the model, not a failure of the whole question.
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://app", timeout=TOOL_TIMEOUT_S) as client:
             resp = await client.get(path, params=params, headers=headers)
-    except httpx.HTTPError as err:
-        return {"error": f"{name} failed: {type(err).__name__}"}
+    except Exception:  # noqa: BLE001 - any transport failure is a tool error, never a 500 for the question
+        return {"error": f"{name} failed"}
+    if resp.status_code >= 500:
+        return {"error": f"{name} failed"}
     try:
         body = resp.json()
     except ValueError:

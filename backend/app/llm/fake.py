@@ -38,8 +38,10 @@ class FakeLLM:
     def embed(self, texts: list[str]) -> list[list[float]]:
         return [_unit_vector(t) for t in texts]
 
-    def chat(self, *, messages, tools) -> ChatTurn:
-        self.chat_calls.append({"messages": messages, "tools": tools})
+    def chat(self, *, messages, tools, timeout=None) -> ChatTurn:
+        self.chat_calls.append({"messages": messages, "tools": tools, "timeout": timeout})
+        if self.chat_script and isinstance(self.chat_script[0], Exception):
+            raise self.chat_script.pop(0)
         if not self.chat_script:
             raise LLMError("chat script exhausted", retryable=False)
         return self.chat_script.pop(0)

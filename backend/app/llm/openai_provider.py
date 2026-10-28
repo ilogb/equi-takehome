@@ -84,9 +84,11 @@ class OpenAIProvider:
         )
         return [d.embedding for d in resp.data]
 
-    def chat(self, *, messages: list[dict], tools: list[dict]) -> ChatTurn:
+    def chat(self, *, messages: list[dict], tools: list[dict], timeout: float | None = None) -> ChatTurn:
+        """One Analyze turn. `timeout` (seconds) bounds this call, so an abandoned call ends with the budget."""
+        client = self.client.with_options(timeout=timeout) if timeout is not None else self.client
         resp = self._call(
-            self.client.responses.create,
+            client.responses.create,
             model=self.settings.analyze_model,
             input=messages,
             tools=tools,
@@ -96,7 +98,7 @@ class OpenAIProvider:
         calls: list[ToolCall] = []
         for item in resp.output:
             if item.type == "function_call":
-                calls.append(ToolCall(item.call_id, item.name, json.loads(item.arguments or "{}")))
+                calls.append(_tool_call(item))
             elif item.type == "message":
                 text_parts += [c.text for c in item.content if c.type == "output_text"]
         return ChatTurn(text="".join(text_parts) or None, tool_calls=calls)
@@ -151,6 +153,17 @@ class OpenAIProvider:
             raise LLMError(str(err), retryable=True) from err
         except openai.OpenAIError as err:
             raise LLMError(str(err), retryable=False) from err
+
+
+def _tool_call(item) -> ToolCall:
+    """Malformed arguments become a ToolCall carrying an error, fed back to the model as a tool error."""
+    try:
+        args = json.loads(item.arguments or "{}")
+    except ValueError:
+        return ToolCall(item.call_id, item.name, {}, error="arguments were not valid JSON")
+    if not isinstance(args, dict):
+        return ToolCall(item.call_id, item.name, {}, error="arguments must be a JSON object")
+    return ToolCall(item.call_id, item.name, args)
 
 
 def _join(row: list[str]) -> str:

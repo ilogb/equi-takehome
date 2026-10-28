@@ -23,7 +23,7 @@ from app.api.search import get_llm
 from app.auth.deps import current_user
 from app.config import Settings
 from app.db import get_session
-from app.llm.base import ChatTurn, ToolCall
+from app.llm.base import ChatTurn, IncompleteResponse, LLMError, ToolCall
 from app.llm.fake import FakeLLM
 from app.main import create_app
 from app.models import CommonRow, User
@@ -382,3 +382,97 @@ def test_analyze_route_is_not_itself_a_tool():
     op = spec["paths"]["/api/analyze"]["post"]
     assert op["tags"] == ["analyze"] and op["operationId"] == "analyze"
     assert "analyze" not in {t["name"] for t in build_tools(create_app(settings()))}
+
+
+# --- review fixes: bounded work, graceful failure, path and id validation -------------
+
+
+def test_each_chat_call_bounded_by_remaining_budget():
+    from app.analyze.loop import BUDGET_S
+
+    db = FakeSession(rows=january_rows())
+    _, llm = ask(make_app(db), db, USER_A, "q", [rows_call(), final({"text": "x", "sources": []})])
+    timeouts = [c["timeout"] for c in llm.chat_calls]
+    assert all(t is not None and 0 < t <= BUDGET_S for t in timeouts)
+    assert timeouts[1] <= timeouts[0]
+
+
+@pytest.mark.parametrize("error", [LLMError("down", retryable=True), IncompleteResponse()])
+def test_llm_failure_is_graceful_answer(error):
+    from app.analyze.loop import UNAVAILABLE
+
+    db = FakeSession(rows=january_rows(), docs={100: (1, "man.pdf")})
+    answer, _ = ask(make_app(db), db, USER_A, "q", [rows_call(), error])
+    assert answer.text == UNAVAILABLE == "Couldn't answer right now — try again."
+    assert answer.table is None and answer.sources == [] and answer.steps == ["Querying common rows…"]
+
+
+def test_llm_failure_through_route_is_not_500():
+    llm = FakeLLM("/nonexistent", chat_script=[LLMError("down", retryable=False)])
+    app = make_app(FakeSession(), llm)
+    app.dependency_overrides[current_user] = lambda: USER_A
+    resp = TestClient(app).post("/api/analyze", json={"question": "q"})
+    assert resp.status_code == 200 and resp.json()["text"] == "Couldn't answer right now — try again."
+
+
+def test_malformed_arguments_become_tool_error():
+    db = FakeSession(rows=january_rows())
+    bad = ChatTurn(text=None, tool_calls=[ToolCall("c1", "query_rows", {}, error="arguments were not valid JSON")])
+    answer, llm = ask(make_app(db), db, USER_A, "q", [bad, final({"text": "ok", "sources": []})])
+    out = json.loads(llm.chat_calls[1]["messages"][-1]["output"])
+    assert "not valid JSON" in out["error"]
+    assert not any("FROM common_row" in s for s in db.statements)  # nothing ran
+    assert answer.text == "ok" and answer.steps == []
+
+
+@pytest.mark.parametrize("bad", ["1/x", "..", "../rows", "1?x=2", True, 1.5, -1, ["1"]])
+def test_path_param_validated_before_substitution(bad):
+    db = FakeSession(rows=january_rows())
+    out = asyncio.run(call_tool(make_app(db), USER_A.id, "get_document", {"document_id": bad}))
+    assert "error" in out and "integer" in out["error"]
+    assert db.statements == []  # no request reached a route
+
+
+def test_string_path_param_must_be_safe_segment():
+    from app.analyze.tools import _path_value
+
+    p = {"name": "slug", "schema": {"type": "string"}}
+    assert _path_value("t", p, "abc_D-1") == "abc_D-1"
+    for bad in ["..", "a/b", "a b", "%2e", ""]:
+        with pytest.raises(AnalyzeToolError):
+            _path_value("t", p, bad)
+
+
+def test_raising_tool_route_is_tool_error_not_500():
+    app = create_app(settings())
+    router = APIRouter()
+
+    @router.get("/api/boom", tags=["analyze"], operation_id="boom")
+    def boom() -> dict:
+        """Always fails."""
+        raise RuntimeError("secret internals")
+
+    app.include_router(router)
+    app.openapi_schema = None
+    app.dependency_overrides[get_session] = lambda: FakeSession()
+    out = asyncio.run(call_tool(app, USER_A.id, "boom", {}))
+    assert out == {"error": "boom failed"}
+
+    llm = FakeLLM("/nonexistent", chat_script=[
+        ChatTurn(text=None, tool_calls=[ToolCall("c1", "boom", {})]), final({"text": "sorry", "sources": []}),
+    ])  # fmt: skip
+    app.dependency_overrides[get_llm] = lambda: llm
+    app.dependency_overrides[current_user] = lambda: USER_A
+    resp = TestClient(app).post("/api/analyze", json={"question": "q"})
+    assert resp.status_code == 200 and resp.json()["text"] == "sorry"
+    assert json.loads(llm.chat_calls[1]["messages"][-1]["output"]) == {"error": "boom failed"}
+
+
+def test_out_of_range_source_ids_dropped_before_query():
+    db = FakeSession(docs={100: (1, "man.pdf")})
+    answer, _ = ask(make_app(db), db, USER_A, "q", [
+        final({"text": "t", "sources": ["99999999999999999999", 2**63, 0, -5, 100]}),
+    ])  # fmt: skip
+    assert [s.document_id for s in answer.sources] == [100]
+    doc_queries = [s for s in db.statements if "FROM document" in s]
+    assert doc_queries and "99999999999999999999" not in doc_queries[0] and str(2**63) not in doc_queries[0]
