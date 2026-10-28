@@ -105,7 +105,7 @@ def test_fake_replays_recorded():
 
 def test_fake_replays_every_recorded_extraction():
     fake = FakeLLM(RECORDED)
-    for path in RECORDED.glob("*.pdf.json"):
+    for path in [*RECORDED.glob("*.pdf.json"), *RECORDED.glob("*.eml.json")]:
         assert fake.extract(file_name=path.name.removesuffix(".json")).rows
 
 

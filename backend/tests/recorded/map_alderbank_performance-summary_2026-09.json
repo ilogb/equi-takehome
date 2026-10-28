@@ -17,6 +17,13 @@
   "Aug-26",
   "Sep-26"
  ],
+ "period_spec": {
+  "measure": "return",
+  "period_kind": "month",
+  "unit_hint": "percent",
+  "benchmark_name": null
+ },
+ "benchmark_column": null,
  "value_columns": [
   {
    "column": "YTD",

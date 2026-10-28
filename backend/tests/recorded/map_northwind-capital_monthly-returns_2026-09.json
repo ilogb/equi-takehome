@@ -7,6 +7,8 @@
  "share_class_column": "Share Class",
  "date_column": "Period",
  "period_columns": [],
+ "period_spec": null,
+ "benchmark_column": "Benchmark",
  "value_columns": [
   {
    "column": "Net Return %",

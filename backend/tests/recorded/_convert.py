@@ -19,12 +19,12 @@ Mapping (spike CsvMapping -> new CsvMapping): header_row_index -> skip_top;
   footer prefixes -> skip_bottom (counted on the fixture CSV, including the blank
   line before the footnotes); wide_date_columns -> period_columns; wide_date_format
   -> date_format; unit percent_number/percent_string -> percent; the per-column
-  benchmark_name_column is replaced by the constant name found in that CSV column;
+  benchmark_name_column becomes the top-level benchmark_column (names vary per row);
+  wide layouts get period_spec = monthly percent return, long layouts null;
   period_end_literal is dropped (the wide YTD end is the latest period column);
   overrides gain period_kind from the overridden column.
 """
 
-import csv
 import json
 from datetime import date
 from pathlib import Path
@@ -87,25 +87,26 @@ def convert_mapping(stem: str, m: dict) -> dict:
         while first > 0 and not lines[first - 1].strip(", "):
             first -= 1  # blank spacer lines above the footnotes
         skip_bottom = len(lines) - first
-    rows = list(csv.DictReader(lines[m["header_row_index"]:]))
-
-    def bench(col: str | None) -> str | None:
-        if not col:
-            return None
-        names = {r[col] for r in rows if r.get(col)}
-        return names.pop() if len(names) == 1 else None
+    wide = m["layout"] == "wide"
+    bench_cols = {v["benchmark_name_column"] for v in m["value_columns"]} - {None}
+    assert len(bench_cols) <= 1
 
     return {
         "layout": m["layout"], "skip_top": m["header_row_index"], "skip_bottom": skip_bottom,
         "entity_column": m["entity_column"], "constant_entity": None,
         "share_class_column": m["share_class_column"], "date_column": m["date_column"],
         "period_columns": m["wide_date_columns"],
+        "period_spec": {
+            "measure": "return", "period_kind": "month", "unit_hint": "percent",
+            "benchmark_name": None,
+        } if wide else None,
+        "benchmark_column": bench_cols.pop() if bench_cols else None,
         "value_columns": [
             {
                 "column": v["column"], "measure": v["measure"], "period_kind": v["period_kind"],
                 "unit_hint": "currency" if v["unit"] == "currency" else (
                     "fraction" if v["unit"] == "fraction" else "percent"),
-                "benchmark_name": bench(v["benchmark_name_column"]),
+                "benchmark_name": None,
             }
             for v in m["value_columns"]
         ],

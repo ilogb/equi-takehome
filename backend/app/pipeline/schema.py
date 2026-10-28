@@ -14,7 +14,7 @@ from app.models import DocType, EntityKind, Measure, PeriodKind
 from app.values import UnitHint
 
 __all__ = [
-    "CsvMapping", "DocumentExtraction", "FundRef", "Override", "RowOut", "TableOut",
+    "CsvMapping", "DocumentExtraction", "FundRef", "Override", "PeriodSpec", "RowOut", "TableOut",
     "UnitHint", "ValueColumn",
 ]
 
@@ -70,6 +70,15 @@ class ValueColumn(_Strict):
     benchmark_name: str | None
 
 
+class PeriodSpec(_Strict):
+    """What the cells under a wide layout's ``period_columns`` mean."""
+
+    measure: Measure
+    period_kind: PeriodKind
+    unit_hint: UnitHint
+    benchmark_name: str | None
+
+
 class Override(_Strict):
     entity: str
     period_kind: PeriodKind
@@ -85,6 +94,8 @@ class CsvMapping(_Strict):
     share_class_column: str | None
     date_column: str | None
     period_columns: list[str]
+    period_spec: PeriodSpec | None
+    benchmark_column: str | None
     value_columns: list[ValueColumn]
     date_format: str | None
     period_end_overrides: list[Override]
