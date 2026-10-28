@@ -1,0 +1,30 @@
+{
+ "layout": "long",
+ "header_row_index": 0,
+ "skip_footer_starting_with": [],
+ "entity_column": "Fund",
+ "share_class_column": "Share Class",
+ "date_column": "Period",
+ "wide_date_columns": [],
+ "wide_date_format": null,
+ "value_columns": [
+  {
+   "column": "Net Return %",
+   "measure": "return",
+   "period_kind": "month",
+   "unit": "percent_number",
+   "benchmark_name_column": null,
+   "period_end_literal": null
+  },
+  {
+   "column": "Benchmark Return %",
+   "measure": "benchmark_return",
+   "period_kind": "month",
+   "unit": "percent_number",
+   "benchmark_name_column": "Benchmark",
+   "period_end_literal": null
+  }
+ ],
+ "document_currency": null,
+ "period_end_overrides": []
+}

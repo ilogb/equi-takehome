@@ -1,0 +1,236 @@
+{
+ "doc_type": "statement",
+ "manager": "Harborline Custody Services",
+ "funds": [
+  {
+   "name": "Man AHL Diversified plc",
+   "share_class": "Class DN USD"
+  },
+  {
+   "name": "Fundsmith SICAV Equity Fund",
+   "share_class": "T EUR Acc"
+  },
+  {
+   "name": "Vanguard Total Stock Market Index",
+   "share_class": "Adm"
+  }
+ ],
+ "as_of_date": "2026-09-30",
+ "currency": "USD",
+ "summary": "Account statement for Calder Family Office LLC, account HC-4471-0093. Ending account value is $24,963,108.45. Net time-weighted account returns are 1.62% for September and 7.84% year to date. Holdings' unrealized gains are not security returns. The document identifies the data as synthetic.",
+ "tags": [
+  "account statement",
+  "net account performance",
+  "holdings",
+  "account activity",
+  "synthetic data"
+ ],
+ "tables": [
+  {
+   "title": "Account Summary",
+   "header_rows": [
+    [
+     "",
+     "This Period"
+    ]
+   ],
+   "body_rows": [
+    [
+     "Beginning Account Value (Aug 31, 2026)",
+     "$24,318,442.17"
+    ],
+    [
+     "Contributions",
+     "$500,000.00"
+    ],
+    [
+     "Withdrawals",
+     "($250,000.00)"
+    ],
+    [
+     "Fees & Charges",
+     "($18,240.55)"
+    ],
+    [
+     "Change in Investment Value",
+     "$412,906.83"
+    ],
+    [
+     "Ending Account Value (Sep 30, 2026)",
+     "$24,963,108.45"
+    ]
+   ]
+  },
+  {
+   "title": "Account Performance (time-weighted, net of fees)",
+   "header_rows": [
+    [
+     "",
+     "September 2026",
+     "Year to Date"
+    ]
+   ],
+   "body_rows": [
+    [
+     "Account",
+     "1.62%",
+     "7.84%"
+    ]
+   ]
+  },
+  {
+   "title": "Holdings as of September 30, 2026",
+   "header_rows": [
+    [
+     "Description",
+     "Units",
+     "Price",
+     "Market Value",
+     "Unrealized G/L %"
+    ]
+   ],
+   "body_rows": [
+    [
+     "Man AHL Diversified plc, Class DN USD",
+     "18,402.115",
+     "$312.44",
+     "$5,749,556.81",
+     "+21.7%"
+    ],
+    [
+     "Fundsmith SICAV Equity Fund, T EUR Acc",
+     "61,210.000",
+     "$71.38",
+     "$4,369,169.80",
+     "+12.4%"
+    ],
+    [
+     "US Treasury Bill 0% 18-Dec-2026",
+     "6,000,000",
+     "$99.12",
+     "$5,947,200.00",
+     "n/a"
+    ],
+    [
+     "Vanguard Total Stock Market Index Adm",
+     "41,880.502",
+     "$166.07",
+     "$6,955,095.97",
+     "+38.9%"
+    ],
+    [
+     "Cash & Sweep",
+     "",
+     "",
+     "$1,942,085.87",
+     ""
+    ],
+    [
+     "Total",
+     "",
+     "",
+     "$24,963,108.45",
+     ""
+    ]
+   ]
+  },
+  {
+   "title": "Account Activity",
+   "header_rows": [
+    [
+     "Date",
+     "Description",
+     "Amount"
+    ]
+   ],
+   "body_rows": [
+    [
+     "09/03/2026",
+     "Contribution - Wire In",
+     "$500,000.00"
+    ],
+    [
+     "09/15/2026",
+     "Dividend - Vanguard Total Stock Market Index Adm",
+     "$21,877.40"
+    ],
+    [
+     "09/22/2026",
+     "Withdrawal - Wire Out",
+     "($250,000.00)"
+    ],
+    [
+     "09/30/2026",
+     "Custody Fee - Q3 2026",
+     "($18,240.55)"
+    ]
+   ]
+  }
+ ],
+ "rows": [
+  {
+   "entity": "Calder Family Office LLC \u00b7 Account HC-4471-0093",
+   "entity_kind": "account",
+   "share_class": null,
+   "measure": "account_value",
+   "period_kind": "other",
+   "period_end": "2026-08-31",
+   "value_as_written": "$24,318,442.17",
+   "value": 24318442.17,
+   "unit": "currency",
+   "currency": "USD",
+   "benchmark_name": null,
+   "table_index": 0,
+   "row": 0,
+   "col": 1
+  },
+  {
+   "entity": "Calder Family Office LLC \u00b7 Account HC-4471-0093",
+   "entity_kind": "account",
+   "share_class": null,
+   "measure": "account_value",
+   "period_kind": "other",
+   "period_end": "2026-09-30",
+   "value_as_written": "$24,963,108.45",
+   "value": 24963108.45,
+   "unit": "currency",
+   "currency": "USD",
+   "benchmark_name": null,
+   "table_index": 0,
+   "row": 5,
+   "col": 1
+  },
+  {
+   "entity": "Calder Family Office LLC \u00b7 Account HC-4471-0093",
+   "entity_kind": "account",
+   "share_class": null,
+   "measure": "account_return",
+   "period_kind": "month",
+   "period_end": "2026-09-30",
+   "value_as_written": "1.62%",
+   "value": 0.0162,
+   "unit": "fraction",
+   "currency": null,
+   "benchmark_name": null,
+   "table_index": 1,
+   "row": 0,
+   "col": 1
+  },
+  {
+   "entity": "Calder Family Office LLC \u00b7 Account HC-4471-0093",
+   "entity_kind": "account",
+   "share_class": null,
+   "measure": "account_return",
+   "period_kind": "ytd",
+   "period_end": "2026-09-30",
+   "value_as_written": "7.84%",
+   "value": 0.0784,
+   "unit": "fraction",
+   "currency": null,
+   "benchmark_name": null,
+   "table_index": 1,
+   "row": 0,
+   "col": 2
+  }
+ ]
+}
