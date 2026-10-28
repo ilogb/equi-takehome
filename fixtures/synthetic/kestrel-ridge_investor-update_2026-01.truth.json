@@ -1,0 +1,64 @@
+{
+  "file": "kestrel-ridge_investor-update_2026-01.eml",
+  "synthetic": true,
+  "manager": "Kestrel Ridge Partners",
+  "doc_type": "investor_letter",
+  "as_of_date": "2026-01-31",
+  "observations": [
+    {
+      "fund": "Kestrel Ridge Long/Short Equity Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-01-31",
+      "value": "0.019",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": null
+    },
+    {
+      "fund": "Kestrel Ridge Long/Short Equity Fund",
+      "share_class": null,
+      "metric": "benchmark_return",
+      "period_kind": "month",
+      "period_end": "2026-01-31",
+      "value": "0.011",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": "MSCI World Index",
+      "where": null
+    },
+    {
+      "fund": "Kestrel Ridge Long/Short Equity Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "1y",
+      "period_end": "2025-12-31",
+      "value": "0.146",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": null
+    },
+    {
+      "fund": "Kestrel Ridge Long/Short Equity Fund",
+      "share_class": null,
+      "metric": "aum",
+      "period_kind": "other",
+      "period_end": "2026-01-31",
+      "value": "612000000",
+      "unit": "currency",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": null
+    }
+  ],
+  "traps": [
+    "Net 1.90% is the return; gross 2.30% must not be stored as the return.",
+    "Exposure figures (168%, 42%) are percentages but not returns.",
+    "'$612m' is AUM in USD: 612000000.",
+    "'Calendar year 2025' is a 1y period ending 2025-12-31.",
+    "Same numbers appear in the text/plain and text/html parts: extract once."
+  ]
+}

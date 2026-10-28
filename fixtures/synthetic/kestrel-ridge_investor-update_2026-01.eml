@@ -1,0 +1,49 @@
+From: Kestrel Ridge Investor Relations <ir@kestrelridge.example>
+To: allocations@allocator.example
+Subject: Kestrel Ridge L/S Equity - January 2026 update
+Date: Wed, 04 Feb 2026 09:15:00 -0500
+Message-ID: <jan2026-update@kestrelridge.example>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="=_kestrel_boundary_0001"
+
+--=_kestrel_boundary_0001
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+Dear Investors,
+
+Kestrel Ridge Long/Short Equity Fund returned +1.90% net in January 2026
+(+2.30% gross), compared with +1.10% for the MSCI World Index.
+
+Gross exposure ended the month at 168% and net exposure at 42%. Fund assets
+were $612m at 31 January.
+
+For the 2025 calendar year the fund returned +14.6% net.
+
+Best regards,
+Mara Ellison
+Investor Relations, Kestrel Ridge Partners
+
+This message is synthetic test data. Kestrel Ridge Partners is fictional.
+
+--=_kestrel_boundary_0001
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#222">
+<p>Dear Investors,</p>
+<p><b>Kestrel Ridge Long/Short Equity Fund</b> returned <b>+1.90% net</b> in
+January 2026 (+2.30% gross), compared with +1.10% for the MSCI World Index.</p>
+<table cellpadding="6" style="border-collapse:collapse;border:1px solid #ccc">
+<tr style="background:#f2f2f2"><th align="left">Period</th><th>Fund (net)</th><th>MSCI World</th></tr>
+<tr><td>January 2026</td><td align="right">1.90%</td><td align="right">1.10%</td></tr>
+<tr><td>Calendar year 2025</td><td align="right">14.60%</td><td align="right">&ndash;</td></tr>
+</table>
+<p>Gross exposure ended the month at 168% and net exposure at 42%. Fund assets
+were $612m at 31 January.</p>
+<p>Best regards,<br>Mara Ellison<br>Investor Relations, Kestrel Ridge Partners</p>
+<p style="font-size:11px;color:#888">This message is synthetic test data.
+Kestrel Ridge Partners is fictional.</p>
+</body></html>
+
+--=_kestrel_boundary_0001--
