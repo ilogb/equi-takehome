@@ -177,7 +177,8 @@ KNOW is inside of a file."</em> Up to ~15 s for a correct answer is acceptable.<
   a second entrypoint <span class="call">Claude's call: no Redis or Celery; jobs live in a
   Postgres table claimed with <code>SELECT … FOR UPDATE SKIP LOCKED</code></span>.</li>
 <li><strong>Stack <span class="qref">Q5</span>:</strong> Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Postgres 16 +
-  pgvector, React + TypeScript + Vite, TanStack Query and Table.</li>
+  pgvector, React + TypeScript + Vite, Tailwind CSS + shadcn/ui <span class="qref">Q26</span>,
+  TanStack Query and Table.</li>
 <li><strong>LLM provider <span class="qref">Q9</span>:</strong> one interface, <code>LLMProvider</code>, with three operations:
   structured extraction (file in, schema-validated JSON out), tool-calling
   chat, and embeddings. <code>OpenAIProvider</code> is the only implementation and the

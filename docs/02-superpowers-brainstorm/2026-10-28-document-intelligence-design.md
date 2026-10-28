@@ -118,7 +118,8 @@ KNOW is inside of a file."* Up to ~15 s for a correct answer is acceptable.
   a second entrypoint (Claude's call: no Redis or Celery; jobs live in a
   Postgres table claimed with `SELECT … FOR UPDATE SKIP LOCKED`).
 - **Stack (Q5):** Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Postgres 16 +
-  pgvector, React + TypeScript + Vite, TanStack Query and Table.
+  pgvector, React + TypeScript + Vite, Tailwind CSS + shadcn/ui (Q26),
+  TanStack Query and Table.
 - **LLM provider (Q9):** one interface, `LLMProvider`, with three operations:
   structured extraction (file in, schema-validated JSON out), tool-calling
   chat, and embeddings. `OpenAIProvider` is the only implementation and the
