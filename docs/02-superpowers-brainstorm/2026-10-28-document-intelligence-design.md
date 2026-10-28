@@ -470,3 +470,9 @@ shows each file's path relative to the chosen folder.
 
 **A12 — Port.** The API runs on port 8000. The local redirect URI is
 `http://localhost:8000/api/auth/google/callback` (already registered).
+
+**A13 — Mode names (Q37, user's choice).** The two search modes are **Find**
+(locate text in documents; was "Simple") and **Analyze** (answer a question
+across the extracted data, with tables and sources; was "Ask"). The code uses
+the same words (`/api/analyze`, the `analyze` OpenAPI tag). Everything this
+spec says about "Ask" applies to Analyze.

@@ -536,3 +536,13 @@ Ask (A1 unchanged).
 > yea I approve
 **Outcome.** Spec amendments A1–A12 are approved (tag `v2.1-amendments-approved`).
 The plan is written next.
+
+### Q37 — Naming the search modes
+**User (verbatim).**
+> also ask is such a basic term are there alternatives?
+**Options.** Find / Analyze (recommended) · Documents / Insights · Exact /
+Smart · Search / Ask AI.
+**Answer.** Find / Analyze (Recommended).
+**Outcome.** The modes are **Find** (was Simple) and **Analyze** (was Ask) in
+the UI, the mockup and the code (`/api/analyze`, tag `analyze`). Spec
+amendment A13.

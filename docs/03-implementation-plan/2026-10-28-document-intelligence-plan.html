@@ -91,21 +91,21 @@ Document A, Data A): <code>docs/02-superpowers-brainstorm/2026-10-28-document-in
 <li><code>period_end</code> is the calendar end of the period (31 Jan, not a 30 Jan pricing date); AUM/NAV/account values use <code>other</code> at their as-of date (A9).</li>
 <li><code>n/a</code>, <code>n/m</code>, blanks, <code>-</code>, <code>–</code>, <code>—</code> produce no row (A3).</li>
 <li>Common-row identity: user, entity, share class, measure, period kind, period end (spec §13 #9). Sources differ when two current documents differ by &gt; <code>0.00005</code>.</li>
-<li>Models (A1): extraction <code>gpt-6.1-sol</code>; CSV/xlsx mapping and Ask <code>gpt-6.1-terra</code>; embeddings <code>text-embedding-3-small</code>, 1536 dims. All from config: <code>EXTRACTION_MODEL</code>, <code>MAPPING_MODEL</code>, <code>ASK_MODEL</code>, <code>EMBEDDING_MODEL</code>.</li>
+<li>Models (A1): extraction <code>gpt-6.1-sol</code>; CSV/xlsx mapping and Analyze <code>gpt-6.1-terra</code>; embeddings <code>text-embedding-3-small</code>, 1536 dims. All from config: <code>EXTRACTION_MODEL</code>, <code>MAPPING_MODEL</code>, <code>ANALYZE_MODEL</code>, <code>EMBEDDING_MODEL</code>.</li>
 <li>Extraction calls: <code>max_output_tokens=100000</code>, timeout 600 s, <code>incomplete</code> = retryable failure, worker concurrency 3 (A2).</li>
 <li>Retries: 3 attempts, backoff 30 s, 120 s, 600 s, then <code>failed</code>.</li>
 <li>Scanned: more than half the pages under 20 text characters → <code>scanned_no_text</code>, no LLM call. PDFs over 50 pages → <code>unsupported</code>.</li>
 <li>Google: scopes <code>openid email profile https://www.googleapis.com/auth/drive.readonly</code>; <code>access_type=offline</code>, <code>prompt=consent</code>, <code>state</code>; only <code>invalid_grant</code> sets <code>needs_reconnect</code>; app in Testing mode (A6).</li>
 <li>Sync: poll every 60 s per user plus Sync now; subfolders included (A11); edits in place and deletes ignored <span class="qref">Q24</span>; originals never stored <span class="qref">Q23</span>.</li>
 <li>API on port <strong>8000</strong> (A12). Local redirect URI <code>http://localhost:8000/api/auth/google/callback</code>. The web dev server proxies <code>/api</code> to it.</li>
-<li>Every query is scoped by <code>user_id</code>, including Ask tool calls.</li>
+<li>Every query is scoped by <code>user_id</code>, including Analyze tool calls.</li>
 <li>Unit tests never touch the network. LLM tests replay recorded responses.</li>
 </ul>
 <h2 id="review-focus">Review Focus</h2>
 <ol>
 <li><strong>A file dropped into a subfolder created after the folder was chosen</strong> should be picked up on the next poll. Pinned by <code>test_poll_picks_up_file_in_new_subfolder</code> (Task 11).</li>
 <li><strong>A worker killed mid-job</strong> must not leave the file stuck in "processing" forever; the job is reclaimed after its lease expires. Pinned by <code>test_expired_lease_is_reclaimed</code> (Task 10).</li>
-<li><strong>Two users whose folders contain the same Drive file</strong> must each see only their own rows, documents and Ask answers. Pinned by <code>test_rows_scoped_to_user</code> (Task 12) and <code>test_ask_tools_run_as_asking_user</code> (Task 14).</li>
+<li><strong>Two users whose folders contain the same Drive file</strong> must each see only their own rows, documents and Analyze answers. Pinned by <code>test_rows_scoped_to_user</code> (Task 12) and <code>test_analyze_tools_run_as_asking_user</code> (Task 14).</li>
 <li><strong>A percent printed without a <code>%</code> sign</strong> (Fundsmith's <code>-0.5</code> under "Performance, % Total Return") must be stored as <code>-0.005</code>, not <code>-0.5</code>. Pinned by <code>test_parse_value_percent_unit_without_sign</code> (Task 3).</li>
 <li><strong>A supported document with no numbers</strong> (an investor letter that is all prose) should finish <code>done</code> with zero rows and still be searchable, not <code>failed</code>. Pinned by <code>test_document_with_no_rows_is_done_and_searchable</code> (Task 9).</li>
 </ol>
@@ -141,10 +141,10 @@ backend/
     jobs/queue.py        enqueue, claim, complete, fail
     jobs/worker.py       python -m app.jobs.worker
     search/service.py    simple_search, similar_documents
-    ask/tools.py         build_tools, call_tool
-    ask/loop.py          answer_question
+    analyze/tools.py     build_tools, call_tool
+    analyze/loop.py      answer_question
     api/auth.py · api/folder.py · api/files.py · api/documents.py
-    api/rows.py · api/funds.py · api/search.py · api/ask.py · api/meta.py
+    api/rows.py · api/funds.py · api/search.py · api/analyze.py · api/meta.py
   tests/
     conftest.py          pgvector testcontainer, session, two users, FakeLLM
     recorded/            copies of docs/03-implementation-plan/spike/out/*.json
@@ -406,14 +406,14 @@ lane merges back. The full gates run once at the end (Task 22).</p>
 </ul>
 <h3 id="task-12-read-api-the-contract-the-web-lane-builds-on">Task 12: Read API (the contract the web lane builds on)</h3>
 <p><strong>Files:</strong> Create <code>backend/app/api/{files,documents,rows,funds,meta}.py</code>; Test <code>backend/tests/integration/test_read_api.py</code></p>
-<p><strong>Interfaces</strong> (JSON; decimals as strings; <code>ask</code>-tagged routes have an explicit <code>operation_id</code> and a docstring, A7):
+<p><strong>Interfaces</strong> (JSON; decimals as strings; <code>analyze</code>-tagged routes have an explicit <code>operation_id</code> and a docstring, A7):
 - <code>GET /api/files?status=&amp;q=</code> → <code>[{id, name, path, mime_type, kind, status, error, doc_type, manager, funds, as_of_date, tags, row_count, updated_at}]</code>.
 - <code>POST /api/files/{id}/retry</code>, <code>POST /api/files/{id}/reextract</code> → <code>enqueue(force=True)</code>.
 - <code>GET /api/files/{id}/content</code> streams from Drive with the original <code>Content-Type</code>; HTML gets <code>Content-Security-Policy: sandbox</code>; a Drive 404 sets <code>missing_in_drive</code> and returns 404 <code>{"detail":"No longer in Drive"}</code>.
-- <code>GET /api/documents/{id}</code> (<code>get_document</code>, ask) → metadata, <code>tables[]</code>, <code>rows[]</code>.
-- <code>GET /api/rows</code> (<code>query_rows</code>, ask) params <code>fund, manager, entity_kind, share_class, measure, period_kind, start, end, needs_review, conflict, sort (value|period_end|entity), order, limit (≤500), offset</code> → <code>{rows, total}</code>; each row has <code>document_id</code>, <code>document_name</code>, <code>needs_review</code>, <code>conflict</code>. <code>GET /api/rows.csv</code> takes the same filters.
-- <code>GET /api/funds</code> (<code>list_funds</code>, ask) → <code>[{id, name, manager, share_classes, documents}]</code>.
-- <code>GET /api/meta</code> (<code>describe_data</code>, ask) → <code>{measures, period_kinds, min_period_end, max_period_end, managers}</code>.</p>
+- <code>GET /api/documents/{id}</code> (<code>get_document</code>, analyze) → metadata, <code>tables[]</code>, <code>rows[]</code>.
+- <code>GET /api/rows</code> (<code>query_rows</code>, analyze) params <code>fund, manager, entity_kind, share_class, measure, period_kind, start, end, needs_review, conflict, sort (value|period_end|entity), order, limit (≤500), offset</code> → <code>{rows, total}</code>; each row has <code>document_id</code>, <code>document_name</code>, <code>needs_review</code>, <code>conflict</code>. <code>GET /api/rows.csv</code> takes the same filters.
+- <code>GET /api/funds</code> (<code>list_funds</code>, analyze) → <code>[{id, name, manager, share_classes, documents}]</code>.
+- <code>GET /api/meta</code> (<code>describe_data</code>, analyze) → <code>{measures, period_kinds, min_period_end, max_period_end, managers}</code>.</p>
 <ul>
 <li>[ ] <strong>Step 1: Write failing tests</strong> (seed two users through <code>persist_extraction</code> with FakeLLM):</li>
 <li><code>test_rows_scoped_to_user</code> (Review Focus 3).</li>
@@ -421,7 +421,7 @@ lane merges back. The full gates run once at the end (Task 22).</p>
 <li><code>test_rows_csv_export</code>.</li>
 <li><code>test_document_has_tables_and_rows</code>.</li>
 <li><code>test_content_404_marks_missing</code>.</li>
-<li><code>test_ask_routes_have_operation_ids</code> (every route tagged <code>ask</code> has an operation id and a description).</li>
+<li><code>test_analyze_routes_have_operation_ids</code> (every route tagged <code>analyze</code> has an operation id and a description).</li>
 <li>[ ] <strong>Step 2: Run</strong> → FAIL. <strong>Step 3: Implement.</strong> <strong>Step 4: Run</strong> → PASS.</li>
 <li>[ ] <strong>Step 5: Commit</strong> <code>feat: read API (files, documents, rows, funds, meta, content)</code></li>
 <li>[ ] <strong>Step 6: Start the web lane:</strong> <code>git worktree add ../equi-web -b lane/web</code> and begin Task 16 there in parallel with Tasks 13–15.</li>
@@ -430,7 +430,7 @@ lane merges back. The full gates run once at the end (Task 22).</p>
 <p><strong>Files:</strong> Create <code>backend/app/search/service.py</code>, <code>backend/app/api/search.py</code>; Test <code>backend/tests/integration/test_search.py</code></p>
 <p><strong>Interfaces:</strong>
 - Produces: <code>simple_search(session, user_id, q: str, llm, limit=20) -&gt; list[SearchHit(document_id, file_name, path, doc_type, manager, funds, as_of_date, tags, snippet, score)]</code>. Hybrid: full-text ranks (<code>websearch_to_tsquery</code>) and cosine ranks are fused with reciprocal rank fusion (k=60) at chunk level, then grouped by document (best chunk gives the snippet). <code>similar_documents(session, user_id, document_id, limit=5) -&gt; list[SearchHit]</code>: same fund or manager first (newest as-of first), then the nearest by the mean chunk embedding, excluding the document itself.
-- Route <code>GET /api/search?q=&amp;limit=</code> (<code>search_documents</code>, ask) → <code>{hits, similar_for_first}</code>.</p>
+- Route <code>GET /api/search?q=&amp;limit=</code> (<code>search_documents</code>, analyze) → <code>{hits, similar_for_first}</code>.</p>
 <ul>
 <li>[ ] <strong>Step 1: Write failing tests:</strong></li>
 <li><code>test_search_terry_smith_finds_fundsmith</code>.</li>
@@ -440,23 +440,23 @@ lane merges back. The full gates run once at the end (Task 22).</p>
 <li>[ ] <strong>Step 2: Run</strong> → FAIL. <strong>Step 3: Implement.</strong> <strong>Step 4: Run</strong> → PASS.</li>
 <li>[ ] <strong>Step 5: Commit</strong> <code>feat: hybrid search and similar documents</code></li>
 </ul>
-<h3 id="task-14-ask">Task 14: Ask</h3>
-<p><strong>Files:</strong> Create <code>backend/app/ask/{tools,loop}.py</code>, <code>backend/app/api/ask.py</code>; Test <code>backend/tests/integration/test_ask.py</code></p>
+<h3 id="task-14-analyze">Task 14: Analyze</h3>
+<p><strong>Files:</strong> Create <code>backend/app/analyze/{tools,loop}.py</code>, <code>backend/app/api/analyze.py</code>; Test <code>backend/tests/integration/test_analyze.py</code></p>
 <p><strong>Interfaces:</strong>
 - Produces:
-  - <code>build_tools(app) -&gt; list[dict]</code>: OpenAPI operations tagged <code>ask</code> and using GET become OpenAI function tools (<code>name</code> = operation id, <code>description</code> = summary + docstring, parameters from query and path params, <code>strict: false</code>). Startup fails if an <code>ask</code> route lacks an operation id.
+  - <code>build_tools(app) -&gt; list[dict]</code>: OpenAPI operations tagged <code>analyze</code> and using GET become OpenAI function tools (<code>name</code> = operation id, <code>description</code> = summary + docstring, parameters from query and path params, <code>strict: false</code>). Startup fails if an <code>analyze</code> route lacks an operation id.
   - <code>call_tool(app, user_id, name, args) -&gt; dict</code>: in-process <code>httpx.AsyncClient(transport=ASGITransport(app))</code> with an internal signed header <code>X-Internal-User</code>, which <code>current_user</code> accepts only from in-process calls.
-  - <code>answer_question(app, session, user, question: str, llm) -&gt; AskAnswer(text, table: AskTable | None, sources: list[{document_id, file_name}], steps: list[str])</code>: at most 5 tool calls. The system prompt states the rules from spec §9 (latest January when no year is given, and say so; mention conflicts; say what's missing). Source ids are checked against the user's documents.
-- Route <code>POST /api/ask {question}</code> → <code>AskAnswer</code>.</p>
+  - <code>answer_question(app, session, user, question: str, llm) -&gt; AnalyzeAnswer(text, table: AnalyzeTable | None, sources: list[{document_id, file_name}], steps: list[str])</code>: at most 5 tool calls. The system prompt states the rules from spec §9 (latest January when no year is given, and say so; mention conflicts; say what's missing). Source ids are checked against the user's documents.
+- Route <code>POST /api/analyze {question}</code> → <code>AnalyzeAnswer</code>.</p>
 <ul>
 <li>[ ] <strong>Step 1: Write failing tests</strong> (scripted FakeLLM chat):</li>
 <li><code>test_tools_only_ask_get_routes</code>.</li>
 <li><code>test_best_january_answer</code>: the script calls <code>query_rows</code> then answers → <code>table</code> rows ranked with Man AHL first; <code>sources</code> include its document.</li>
 <li><code>test_stops_after_five_calls</code>.</li>
 <li><code>test_unknown_source_ids_dropped</code>.</li>
-<li><code>test_ask_tools_run_as_asking_user</code>: user B's question can't return user A's rows (Review Focus 3).</li>
+<li><code>test_analyze_tools_run_as_asking_user</code>: user B's question can't return user A's rows (Review Focus 3).</li>
 <li>[ ] <strong>Step 2: Run</strong> → FAIL. <strong>Step 3: Implement.</strong> <strong>Step 4: Run</strong> → PASS.</li>
-<li>[ ] <strong>Step 5: Commit</strong> <code>feat: Ask over the app's own API tools</code></li>
+<li>[ ] <strong>Step 5: Commit</strong> <code>feat: Analyze over the app's own API tools</code></li>
 </ul>
 <h3 id="task-15-eval">Task 15: Eval</h3>
 <p><strong>Files:</strong> Create <code>backend/evals/{match,run_eval}.py</code>; Test <code>backend/tests/unit/test_match.py</code></p>
@@ -484,8 +484,8 @@ lane merges back. The full gates run once at the end (Task 22).</p>
 - Produces:
   - <code>api.ts</code>: typed fetchers for every route in Tasks 11–14, using TanStack Query keys <code>["files", filters]</code>, <code>["rows", filters]</code>, etc.
   - <code>formatPercent("0.0842") → "8.42%"</code>, <code>formatPercent("-0.005") → "−0.50%"</code> (U+2212), <code>formatMoney("24963108.45","USD") → "$24,963,108.45"</code>.
-  - Routes: <code>/connect</code>, <code>/library</code>, <code>/documents/:id</code>, <code>/data</code>, <code>/search?q=&amp;mode=simple|ask</code>. A route guard sends 401 to <code>/connect</code>.
-  - <code>AppHeader</code>: logo, Library/Data nav, a centred search Input with a ToggleGroup (Simple/Ask) that navigates to <code>/search</code>, the SyncPill (Synced / Syncing / Sync stopped), the folder button, and the avatar menu.
+  - Routes: <code>/connect</code>, <code>/library</code>, <code>/documents/:id</code>, <code>/data</code>, <code>/search?q=&amp;mode=find|analyze</code>. A route guard sends 401 to <code>/connect</code>.
+  - <code>AppHeader</code>: logo, Library/Data nav, a centred search Input with a ToggleGroup (Find/Analyze) that navigates to <code>/search</code>, the SyncPill (Synced / Syncing / Sync stopped), the folder button, and the avatar menu.
 - Vite dev proxy <code>/api</code> → <code>http://localhost:8000</code>.</p>
 <ul>
 <li>[ ] <strong>Step 1: Write failing tests</strong> for <code>formatPercent</code>, <code>formatMoney</code>, and the StatusBadge text and variant for all 7 statuses.</li>
@@ -545,17 +545,17 @@ lane merges back. The full gates run once at the end (Task 22).</p>
 <li>[ ] <strong>Step 2: Run</strong> → FAIL. <strong>Step 3: Implement.</strong> <strong>Step 4: Run</strong> → PASS; build clean.</li>
 <li>[ ] <strong>Step 5: Commit</strong> <code>feat(web): data table</code></li>
 </ul>
-<h3 id="task-21-web-lane-search-results-and-ask-variant-a">Task 21 (web lane): Search results and Ask (variant A)</h3>
+<h3 id="task-21-web-lane-search-results-and-analyze-variant-a">Task 21 (web lane): Search results and Analyze (variant A)</h3>
 <p><strong>Files:</strong> Create <code>src/routes/SearchResults.tsx</code>; Test <code>src/routes/SearchResults.test.tsx</code></p>
 <ul>
 <li>[ ] <strong>Step 1: Write failing tests</strong>, states S1–S5:</li>
-<li>Simple mode lists hits with snippet, tags and path, with a Similar panel for the selected hit;</li>
+<li>Find mode lists hits with snippet, tags and path, with a Similar panel for the selected hit;</li>
 <li>no results shows the empty state;</li>
-<li>Ask mode shows a Skeleton with "Looking up your data (up to 5 lookups)" while pending, then the answer text, the table (formatted percents) and source links;</li>
+<li>Analyze mode shows a Skeleton with "Looking up your data (up to 5 lookups)" while pending, then the answer text, the table (formatted percents) and source links;</li>
 <li>"Can't answer" text renders as-is;</li>
 <li>Back from a source document returns to the same URL.</li>
 <li>[ ] <strong>Step 2: Run</strong> → FAIL. <strong>Step 3: Implement.</strong> <strong>Step 4: Run</strong> → PASS; build clean.</li>
-<li>[ ] <strong>Step 5: Commit</strong> <code>feat(web): search results and ask</code></li>
+<li>[ ] <strong>Step 5: Commit</strong> <code>feat(web): search results and analyze</code></li>
 <li>[ ] <strong>Step 6: Merge the lane:</strong> in the main checkout, <code>git merge --no-ff lane/web</code>, then <code>git worktree remove ../equi-web</code>.</li>
 </ul>
 <h3 id="task-22-containers-caprover-readme-gates">Task 22: Containers, CapRover, README, gates</h3>
@@ -574,6 +574,6 @@ lane merges back. The full gates run once at the end (Task 22).</p>
 <li>the CapRover deploy section.</li>
 <li>[ ] <strong>Step 3: Gates:</strong> <code>cd backend &amp;&amp; uv run pytest</code> (all), <code>npm --prefix web test -- --run</code>, <code>npm --prefix web run build</code>, <code>uv run ruff check</code>. One fix round for anything they find.</li>
 <li>[ ] <strong>Step 4: Commit</strong> <code>chore: containers, CapRover config, README</code></li>
-<li>[ ] <strong>Step 5 (with the user, outward-facing):</strong> deploy to CapRover. Add <code>https://&lt;web-app&gt;.&lt;root-domain&gt;/api/auth/google/callback</code> to the Google client, add the reviewers as test users, smoke-test sign-in → sync → Ask on the live URL.</li>
+<li>[ ] <strong>Step 5 (with the user, outward-facing):</strong> deploy to CapRover. Add <code>https://&lt;web-app&gt;.&lt;root-domain&gt;/api/auth/google/callback</code> to the Google client, add the reviewers as test users, smoke-test sign-in → sync → Analyze on the live URL.</li>
 </ul></article>
 </div>

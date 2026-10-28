@@ -511,5 +511,10 @@ Sync keeps a cached set of descendant folder ids and checks a changed file's
 <code>parents</code> against it, refreshing the set when a folder changes. The Library
 shows each file's path relative to the chosen folder.</p>
 <p><strong>A12 — Port.</strong> The API runs on port 8000. The local redirect URI is
-<code>http://localhost:8000/api/auth/google/callback</code> (already registered).</p></article>
+<code>http://localhost:8000/api/auth/google/callback</code> (already registered).</p>
+<p><strong>A13 — Mode names (Q37, user's choice).</strong> The two search modes are <strong>Find</strong>
+(locate text in documents; was "Simple") and <strong>Analyze</strong> (answer a question
+across the extracted data, with tables and sources; was "Ask"). The code uses
+the same words (<code>/api/analyze</code>, the <code>analyze</code> OpenAPI tag). Everything this
+spec says about "Ask" applies to Analyze.</p></article>
 </div>
