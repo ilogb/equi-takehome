@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings, get_settings
 from app.jobs.queue import PermanentError, claim, complete, fail
 from app.llm.base import LLMProvider
-from app.models import Job, SourceFile
+from app.models import Job, SourceFile, User
 from app.pipeline.run import process_file
 from app.sources.base import DocumentSource
 
@@ -130,6 +130,35 @@ def _no_source(session: Session, file: SourceFile) -> DocumentSource:
     raise PermanentError("Drive source not configured")
 
 
+def drive_source_for_file(settings: Settings) -> SourceFor:
+    """Build the Drive source from the file owner's stored Google credentials.
+
+    A revoked grant raises ReconnectRequired (not retryable), so the job fails at once and
+    the user is flagged `needs_reconnect` (committed inside credentials_for).
+    """
+    from app.auth.google import drive_source_for
+
+    def source_for(session: Session, file: SourceFile) -> DocumentSource:
+        user = session.get(User, file.user_id)
+        if user is None:
+            raise PermanentError(f"user {file.user_id} no longer exists")
+        return drive_source_for(session, user, settings)
+
+    return source_for
+
+
+def drive_poll_fn(settings: Settings) -> PollFn:
+    """Poll Drive for every user with a folder, skipping users who must reconnect."""
+    from app.auth.google import drive_source_for
+    from app.sync.service import poll_all
+
+    def poll(session: Session) -> None:
+        poll_all(session, lambda s, user: drive_source_for(s, user, settings))
+
+    return poll
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-    run_worker(get_settings(), poll_fn=None, source_for=_no_source)
+    _settings = get_settings()
+    run_worker(_settings, poll_fn=drive_poll_fn(_settings), source_for=drive_source_for_file(_settings))

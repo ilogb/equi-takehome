@@ -67,3 +67,24 @@ All need Postgres (`tests/integration/test_queue.py`, injected `now`). Backoff s
 - `test_exhausted_lease_fails`: a `running` job with expired lease and `attempts == 4` is not returned by `claim`; it becomes `failed` with `last_error == "worker lost the job too many times"` and its file is `failed`; the next runnable job (if any) is claimed in the same call.
 - `test_fenced_complete_and_fail`: after worker A claims and its lease expires, worker B reclaims; `complete(job, lease=A's lease)` / `fail(..., lease=A's lease)` return `False` and leave B's job state unchanged.
 - `test_missing_file_fails_permanently`: a job whose `source_file` row is gone ends `failed` after one attempt via `process_one`.
+
+## Task 11
+
+All need Postgres (`tests/integration/test_auth.py`, `tests/integration/test_sync.py`, `FakeDriveSource` from `tests/fakes.py`). Unit-tested without a DB: crypto round-trip and fail-fast config (`tests/unit/test_auth.py`), allowlist, `credentials_for` invalid_grant handling with a fake session, the OAuth callback (bad state 400, unlisted/unverified email redirect with nothing stored, encrypted token on sign-in, cookie flags) with the token exchange and DB overridden; Drive error classification, retries, paging and the changes mask over a fake HTTP session (`tests/unit/test_drive.py`); `decide_change`, `walk_folder`, `snapshot_folder` call order, `apply_changes` and `sync_step` (incl. 410) over `FakeDriveSource` (`tests/unit/test_sync.py`).
+
+- `test_callback_rejects_unlisted_email`: against a real DB, an unlisted email leaves zero `user` rows; redirect `…/connect?error=not_allowed`.
+- `test_refresh_token_encrypted_at_rest`: after a successful callback, the `user.refresh_token_enc` column read with raw SQL does not contain the plaintext; `decrypt` returns it. A second sign-in with no refresh token keeps the stored one.
+- `test_invalid_grant_sets_needs_reconnect`: `credentials_for` with a refresh raising `invalid_grant` raises `ReconnectRequired`, and after the caller's `rollback()` the `user.needs_reconnect` column is still `true` (committed inside).
+- `test_token_saved_before_listing`: `select_folder` stores `watched_folder.page_token` equal to the token returned before the first `list_children` call.
+- `test_initial_sync_includes_subfolders`: after `select_folder` on the fake tree, `source_file` rows exist for files in `docs/real` and `docs/synthetic` with `path` `docs/real/…` / `docs/synthetic/…`, each supported one has a queued `job`; a PNG row has status `unsupported` and no job; `descendant_ids` holds every subfolder id (not the root).
+- `test_poll_picks_up_file_in_new_subfolder`: folder-created change then file change in it → one new `source_file` (path `…/<new folder>/<file>`), one job, `descendant_ids` includes the new folder; `SyncResult.queued == 1`.
+- `test_poll_ignores_other_folders`: a change parented outside the tree creates no row.
+- `test_poll_ignores_edits_and_deletes`: edited, trashed and removed known files create no job and do not change the existing rows.
+- `test_410_rewalks`: with the saved token expired, `poll_changes` saves a fresh token, queues only files without a row, and sets `last_synced_at`.
+- `test_poll_saves_response_token_and_last_synced_at`: after a poll, `page_token` equals the token from the response and `last_synced_at` is set; `last_error` cleared.
+- `test_poll_user_records_error`: a `SourceError` from the source rolls back partial rows, sets `watched_folder.last_error`, commits, and re-raises; a `ReconnectRequired` also sets `needs_reconnect`.
+- `test_poll_all_skips_needs_reconnect`: two users with folders, one `needs_reconnect=true`: only the other user's source is built; one user's failure does not stop the other.
+- `test_change_folder_deletes_files`: `select_folder` to a different folder id deletes that user's `source_file` rows (and by cascade documents, rows, chunks, jobs) and not another user's.
+- `test_concurrent_poll_serialised`: two sessions polling one user: the second blocks on the `watched_folder` row lock and then sees the advanced token (no duplicate rows).
+- `test_folder_routes`: `GET /api/folder` returns `{name, last_synced_at, last_error, counts_by_status, needs_reconnect}`; 404 before a folder is chosen; `/api/auth/me` `has_folder` true after `PUT /api/folder`; all routes 401 without a session.
+- `test_worker_source_for_marks_reconnect`: `process_one` with the Drive `source_for` and a revoked token fails the job at once (`failed`, attempt 1) and `user.needs_reconnect` is true.
