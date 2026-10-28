@@ -17,3 +17,8 @@ Written after the user has tried the app (plan: "Testing approach", Q38). Builde
 - `tests/integration/test_schema.py::test_unique_drive_file_per_user`: the same `drive_file_id` for two different users is allowed; inserting it twice for one user raises `IntegrityError`.
 
 - (controller, from Task 2 review) `test_migration_matches_models`: after `alembic upgrade head`, `alembic check` reports no differences (hand-written migration vs ORM metadata).
+
+## Task 7
+
+- `tests/integration/test_funds.py::test_resolve_reuses_alias`: `resolve_fund(session, uid, "Northwind Global Macro Fund, L.P.", None)` then `resolve_fund(session, uid, "Northwind Global Macro Fund LP", None)` return the same `Fund` (same id); exactly one `Fund` row and one `FundAlias` row exist for the user (both spellings share the normalized key `northwind global macro`). Also: a differently-named variant that normalizes differently (e.g. adding "II") creates a second fund with its own alias.
+- `tests/integration/test_funds.py::test_funds_are_per_user`: `resolve_fund` with the same name for two different users returns two different `Fund` rows (different ids, each with its own `user_id`); `known_fund_names(session, uid)` returns only that user's canonical names.
