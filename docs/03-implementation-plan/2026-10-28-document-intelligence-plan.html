@@ -46,6 +46,9 @@ mark.tbd { background: var(--tbd); color: var(--ink); padding: 0 4px; border-rad
 table { border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; max-width: 100%; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 a { color: var(--accent); }
+figure.diagram { margin: 22px 0 26px; max-width: 100% !important; color: var(--ink); }
+figure.diagram svg { width: 100%; height: auto; display: block; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; box-sizing: border-box; }
+figure.diagram figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; max-width: 72ch; }
 </style>
 <div class="wrap">
   <nav class="toc" aria-label="Contents"><div class="label">Contents</div><div class="toc">
@@ -53,6 +56,7 @@ a { color: var(--accent); }
 <li><a href="#global-constraints">Global Constraints</a></li>
 <li><a href="#testing-approach-for-this-build-user-decision-q38">Testing approach for this build (user decision, Q38)</a></li>
 <li><a href="#review-focus">Review Focus</a></li>
+<li><a href="#architecture-at-a-glance">Architecture at a glance</a></li>
 <li><a href="#file-structure">File structure</a></li>
 <li><a href="#lanes-and-order">Lanes and order</a></li>
 </ul>
@@ -138,6 +142,217 @@ app then we write integration tests"</p>
 <li><strong>A supported document with no numbers</strong> (an investor letter that is all prose) should finish <code>done</code> with zero rows and still be searchable, not <code>failed</code>. Pinned by <code>test_document_with_no_rows_is_done_and_searchable</code> (Task 9).</li>
 </ol>
 <hr />
+<h2 id="architecture-at-a-glance">Architecture at a glance</h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 400" role="img" aria-label="System architecture: the browser reaches the API only through the web app's /api proxy; the API and the worker share Postgres with pgvector; the worker polls and downloads from Google Drive and calls OpenAI to extract, map and embed; the API streams files from Drive for the viewer and calls OpenAI for Analyze." font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="currentColor">
+  <defs>
+    <marker id="sys-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- Boxes: request path on the top row, background work on the bottom row -->
+  <g fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="20" y="60" width="130" height="56" rx="6"/>
+    <rect x="200" y="60" width="130" height="56" rx="6"/>
+    <rect x="400" y="60" width="170" height="56" rx="6"/>
+    <rect x="700" y="60" width="200" height="56" rx="6"/>
+    <rect x="160" y="280" width="170" height="56" rx="6" stroke-dasharray="5 4"/>
+    <rect x="400" y="280" width="170" height="56" rx="6"/>
+    <rect x="700" y="280" width="200" height="56" rx="6" stroke-dasharray="5 4"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="85" y="84" font-weight="600">Browser</text>
+    <text x="85" y="102" opacity="0.75">React · shadcn</text>
+    <text x="265" y="84" font-weight="600">web</text>
+    <text x="265" y="102" opacity="0.75">nginx · SPA</text>
+    <text x="485" y="84" font-weight="600">api</text>
+    <text x="485" y="102" opacity="0.75">FastAPI · port 8000</text>
+    <text x="800" y="84" font-weight="600">Postgres 16 + pgvector</text>
+    <text x="800" y="102" opacity="0.75">rows · tables · chunks · jobs</text>
+    <text x="245" y="304" font-weight="600">Google Drive</text>
+    <text x="245" y="322" opacity="0.75">OAuth · drive.readonly</text>
+    <text x="485" y="304" font-weight="600">worker</text>
+    <text x="485" y="322" opacity="0.75">3 job threads + poller</text>
+    <text x="800" y="304" font-weight="600">OpenAI</text>
+    <text x="800" y="322" opacity="0.75">sol · terra · embeddings</text>
+  </g>
+
+  <!-- Arrows -->
+  <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#sys-arrow)">
+    <line x1="150" y1="88" x2="198" y2="88"/>
+    <line x1="330" y1="88" x2="398" y2="88"/>
+    <line x1="570" y1="80" x2="698" y2="80"/>
+    <line x1="400" y1="300" x2="332" y2="300"/>
+    <polyline points="430,116 430,200 300,200 300,278"/>
+    <polyline points="570,296 640,296 640,104 698,104"/>
+    <line x1="570" y1="320" x2="698" y2="320"/>
+    <polyline points="540,116 540,240 760,240 760,278"/>
+  </g>
+
+  <!-- Arrow labels -->
+  <g font-size="11">
+    <text x="175" y="80" text-anchor="middle">HTTPS</text>
+    <text x="364" y="80" text-anchor="middle">/api</text>
+    <text x="634" y="72" text-anchor="middle">SQL, user-scoped</text>
+    <text x="366" y="292" text-anchor="middle">poll 60 s</text>
+    <text x="366" y="316" text-anchor="middle">download</text>
+    <text x="365" y="192" text-anchor="middle">stream file for viewer</text>
+    <text x="648" y="170">claim jobs ·</text>
+    <text x="648" y="184">write rows</text>
+    <text x="634" y="338" text-anchor="middle">extract · map · embed</text>
+    <text x="768" y="262">Analyze chat ·</text>
+    <text x="768" y="274" dy="0">query embedding</text>
+  </g>
+</svg>
+<figcaption>The browser reaches the API only through the web app's /api proxy, so the session cookie stays on one origin. The API and the worker share one Postgres with pgvector. Only the worker polls Drive and calls OpenAI to extract; the API touches Drive only to stream a file into the viewer, and OpenAI only for Analyze.</figcaption></figure>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 310" role="img" aria-label="File lifecycle: sync queues a new file; a worker claims it and processes it; it ends done, needs review, failed, unsupported or scanned with no text; retryable errors go back to queued with backoff of 30 seconds, 2 minutes, then 10 minutes, and fail after that; Retry and Re-extract re-queue a file by hand." font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="currentColor">
+  <defs>
+    <marker id="life-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <g fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="150" y="132" width="120" height="44" rx="22"/>
+    <rect x="350" y="132" width="130" height="44" rx="22"/>
+    <rect x="720" y="40" width="180" height="36" rx="18"/>
+    <rect x="720" y="92" width="180" height="36" rx="18"/>
+    <rect x="720" y="144" width="180" height="36" rx="18"/>
+    <rect x="720" y="196" width="180" height="36" rx="18"/>
+    <rect x="720" y="248" width="180" height="36" rx="18"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="210" y="158" font-weight="600">queued</text>
+    <text x="415" y="158" font-weight="600">processing</text>
+    <text x="810" y="62" font-weight="600">done</text>
+    <text x="810" y="114" font-weight="600">needs review</text>
+    <text x="810" y="166" font-weight="600">failed</text>
+    <text x="810" y="218" font-weight="600">unsupported</text>
+    <text x="810" y="270" font-weight="600">scanned: no text</text>
+  </g>
+
+  <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#life-arrow)">
+    <line x1="30" y1="154" x2="148" y2="154"/>
+    <line x1="270" y1="154" x2="348" y2="154"/>
+    <polyline points="480,154 530,154 530,58 718,58"/>
+    <polyline points="530,110 718,110"/>
+    <polyline points="530,162 718,162"/>
+    <polyline points="530,154 530,214 718,214"/>
+    <polyline points="530,214 530,266 718,266"/>
+    <path d="M415,176 C415,248 210,248 210,178"/>
+    <path d="M810,40 C810,8 210,8 210,130"/>
+  </g>
+
+  <g font-size="11">
+    <text x="88" y="146" text-anchor="middle">new file seen</text>
+    <text x="88" y="172" text-anchor="middle">(poll · subfolders)</text>
+    <text x="309" y="146" text-anchor="middle">claimed</text>
+    <text x="309" y="172" text-anchor="middle">lease</text>
+    <text x="625" y="52" text-anchor="middle">extracted</text>
+    <text x="625" y="104" text-anchor="middle">flagged rows</text>
+    <text x="625" y="156" text-anchor="middle">retries used up · corrupt</text>
+    <text x="625" y="208" text-anchor="middle">wrong type · &gt;50 pages</text>
+    <text x="625" y="260" text-anchor="middle">&gt;½ pages without text</text>
+    <text x="312" y="268" text-anchor="middle">retryable error → back off 30 s · 2 min · 10 min</text>
+    <text x="470" y="52" text-anchor="middle">Retry · Re-extract (manual)</text>
+  </g>
+</svg>
+<figcaption>Every file moves through one job queue. Sync queues new files only (edits and deletes are ignored, Q24). A worker claims a job under a lease; retryable errors back off 30 s, 2 min, 10 min and then fail; a scanned PDF stops before any LLM call.</figcaption></figure>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" role="img" aria-label="Analyze loop: the browser posts a question; the API sends it to the model with tools built from its own analyze-tagged GET routes; each tool call runs in-process as the asking user, so it can only read that user's rows; after at most five calls the model answers with text and a table, and the API checks every cited document id before returning source links." font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="currentColor">
+  <defs>
+    <marker id="ana-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+    <marker id="ana-arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3a86c8"/>
+    </marker>
+  </defs>
+
+  <!-- Lifeline heads -->
+  <g fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="30" y="16" width="120" height="36" rx="6"/>
+    <rect x="270" y="16" width="140" height="36" rx="6"/>
+    <rect x="520" y="16" width="140" height="36" rx="6" stroke-dasharray="5 4"/>
+    <rect x="730" y="16" width="130" height="36" rx="6"/>
+  </g>
+  <g text-anchor="middle" font-weight="600">
+    <text x="90" y="39">Browser</text>
+    <text x="340" y="39">api /analyze</text>
+    <text x="590" y="39">OpenAI (terra)</text>
+    <text x="795" y="39">own GET routes</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1" stroke-dasharray="3 4" opacity="0.5">
+    <line x1="90" y1="52" x2="90" y2="318"/>
+    <line x1="340" y1="52" x2="340" y2="318"/>
+    <line x1="590" y1="52" x2="590" y2="318"/>
+    <line x1="795" y1="52" x2="795" y2="318"/>
+  </g>
+
+  <!-- Messages -->
+  <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#ana-arrow)">
+    <line x1="90" y1="82" x2="338" y2="82"/>
+    <line x1="340" y1="114" x2="588" y2="114"/>
+    <line x1="590" y1="146" x2="342" y2="146"/>
+    <line x1="795" y1="210" x2="342" y2="210"/>
+    <line x1="340" y1="242" x2="588" y2="242"/>
+    <line x1="590" y1="274" x2="342" y2="274"/>
+    <line x1="340" y1="306" x2="92" y2="306"/>
+  </g>
+  <line x1="340" y1="178" x2="793" y2="178" stroke="#3a86c8" stroke-width="2" marker-end="url(#ana-arrow-accent)"/>
+
+  <g font-size="11" text-anchor="middle">
+    <text x="215" y="76">POST {question}</text>
+    <text x="465" y="108">question + tools from OpenAPI</text>
+    <text x="465" y="140">tool call: query_rows(…)</text>
+    <text x="566" y="172" fill="#3a86c8" font-weight="600">in-process GET as this user only</text>
+    <text x="566" y="204">JSON rows</text>
+    <text x="465" y="236">tool result (≤ 5 calls, then stop)</text>
+    <text x="465" y="268">answer text + table</text>
+    <text x="215" y="300">answer · table · checked source links</text>
+  </g>
+</svg>
+<figcaption>Analyze turns the app's own read endpoints into the model's tools. Each tool call runs in-process as the asking user, so the model can never read another user's rows. The loop stops after five calls, and cited document ids are checked before they become links.</figcaption></figure>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 190" role="img" aria-label="Build order: backend tasks 1 to 12 run one at a time in the main checkout; once task 12 fixes the API contract, the web lane (tasks 16 to 21) branches into its own worktree and runs in parallel with backend tasks 13 to 15; the lane merges back before task 22, which packages, deploys and runs the full gates." font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="currentColor">
+  <defs>
+    <marker id="bo-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <g font-size="11" opacity="0.75">
+    <text x="20" y="22">main checkout · build/mvp</text>
+    <text x="20" y="128">worktree · lane/web</text>
+  </g>
+
+  <g fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="20" y="34" width="420" height="48" rx="6"/>
+    <rect x="460" y="34" width="200" height="48" rx="6"/>
+    <rect x="740" y="34" width="120" height="48" rx="6"/>
+    <rect x="460" y="140" width="260" height="40" rx="6" stroke="#3a86c8"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="230" y="55" font-weight="600">Tasks 1–12 · backend foundation</text>
+    <text x="230" y="72" font-size="11" opacity="0.75">schema · extraction · queue · Drive sync · read API</text>
+    <text x="560" y="55" font-weight="600">Tasks 13–15</text>
+    <text x="560" y="72" font-size="11" opacity="0.75">search · Analyze · eval</text>
+    <text x="800" y="55" font-weight="600">Task 22</text>
+    <text x="800" y="72" font-size="11" opacity="0.75">deploy · gates</text>
+    <text x="590" y="165" font-weight="600" fill="#3a86c8">Tasks 16–21 · web screens</text>
+  </g>
+
+  <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#bo-arrow)">
+    <line x1="440" y1="58" x2="458" y2="58"/>
+    <line x1="660" y1="58" x2="738" y2="58"/>
+    <polyline points="430,82 430,160 458,160"/>
+    <polyline points="720,160 760,160 760,84"/>
+  </g>
+  <g font-size="11">
+    <text x="424" y="112" text-anchor="end">branch once the API</text>
+    <text x="424" y="126" text-anchor="end">contract is fixed</text>
+    <text x="768" y="122">merge</text>
+  </g>
+</svg>
+<figcaption>Backend Tasks 1–12 run in order in the main checkout. Once Task 12 fixes the API contract, the web lane runs in its own worktree alongside Tasks 13–15, then merges back before Task 22 packages, deploys and runs the full gates.</figcaption></figure>
 <h2 id="file-structure">File structure</h2>
 <pre><code>Makefile · docker-compose.yml · .env.example · README.md
 backend/

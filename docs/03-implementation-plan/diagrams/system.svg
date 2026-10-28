@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 400" role="img" aria-label="System architecture: the browser reaches the API only through the web app's /api proxy; the API and the worker share Postgres with pgvector; the worker polls and downloads from Google Drive and calls OpenAI to extract, map and embed; the API streams files from Drive for the viewer and calls OpenAI for Analyze." font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="currentColor">
+  <defs>
+    <marker id="sys-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- Boxes: request path on the top row, background work on the bottom row -->
+  <g fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="20" y="60" width="130" height="56" rx="6"/>
+    <rect x="200" y="60" width="130" height="56" rx="6"/>
+    <rect x="400" y="60" width="170" height="56" rx="6"/>
+    <rect x="700" y="60" width="200" height="56" rx="6"/>
+    <rect x="160" y="280" width="170" height="56" rx="6" stroke-dasharray="5 4"/>
+    <rect x="400" y="280" width="170" height="56" rx="6"/>
+    <rect x="700" y="280" width="200" height="56" rx="6" stroke-dasharray="5 4"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="85" y="84" font-weight="600">Browser</text>
+    <text x="85" y="102" opacity="0.75">React · shadcn</text>
+    <text x="265" y="84" font-weight="600">web</text>
+    <text x="265" y="102" opacity="0.75">nginx · SPA</text>
+    <text x="485" y="84" font-weight="600">api</text>
+    <text x="485" y="102" opacity="0.75">FastAPI · port 8000</text>
+    <text x="800" y="84" font-weight="600">Postgres 16 + pgvector</text>
+    <text x="800" y="102" opacity="0.75">rows · tables · chunks · jobs</text>
+    <text x="245" y="304" font-weight="600">Google Drive</text>
+    <text x="245" y="322" opacity="0.75">OAuth · drive.readonly</text>
+    <text x="485" y="304" font-weight="600">worker</text>
+    <text x="485" y="322" opacity="0.75">3 job threads + poller</text>
+    <text x="800" y="304" font-weight="600">OpenAI</text>
+    <text x="800" y="322" opacity="0.75">sol · terra · embeddings</text>
+  </g>
+
+  <!-- Arrows -->
+  <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#sys-arrow)">
+    <line x1="150" y1="88" x2="198" y2="88"/>
+    <line x1="330" y1="88" x2="398" y2="88"/>
+    <line x1="570" y1="80" x2="698" y2="80"/>
+    <line x1="400" y1="300" x2="332" y2="300"/>
+    <polyline points="430,116 430,200 300,200 300,278"/>
+    <polyline points="570,296 640,296 640,104 698,104"/>
+    <line x1="570" y1="320" x2="698" y2="320"/>
+    <polyline points="540,116 540,240 760,240 760,278"/>
+  </g>
+
+  <!-- Arrow labels -->
+  <g font-size="11">
+    <text x="175" y="80" text-anchor="middle">HTTPS</text>
+    <text x="364" y="80" text-anchor="middle">/api</text>
+    <text x="634" y="72" text-anchor="middle">SQL, user-scoped</text>
+    <text x="366" y="292" text-anchor="middle">poll 60 s</text>
+    <text x="366" y="316" text-anchor="middle">download</text>
+    <text x="365" y="192" text-anchor="middle">stream file for viewer</text>
+    <text x="648" y="170">claim jobs ·</text>
+    <text x="648" y="184">write rows</text>
+    <text x="634" y="338" text-anchor="middle">extract · map · embed</text>
+    <text x="768" y="262">Analyze chat ·</text>
+    <text x="768" y="274" dy="0">query embedding</text>
+  </g>
+</svg>

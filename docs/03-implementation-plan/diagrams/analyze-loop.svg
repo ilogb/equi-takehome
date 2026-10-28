@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" role="img" aria-label="Analyze loop: the browser posts a question; the API sends it to the model with tools built from its own analyze-tagged GET routes; each tool call runs in-process as the asking user, so it can only read that user's rows; after at most five calls the model answers with text and a table, and the API checks every cited document id before returning source links." font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="currentColor">
+  <defs>
+    <marker id="ana-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+    <marker id="ana-arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3a86c8"/>
+    </marker>
+  </defs>
+
+  <!-- Lifeline heads -->
+  <g fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="30" y="16" width="120" height="36" rx="6"/>
+    <rect x="270" y="16" width="140" height="36" rx="6"/>
+    <rect x="520" y="16" width="140" height="36" rx="6" stroke-dasharray="5 4"/>
+    <rect x="730" y="16" width="130" height="36" rx="6"/>
+  </g>
+  <g text-anchor="middle" font-weight="600">
+    <text x="90" y="39">Browser</text>
+    <text x="340" y="39">api /analyze</text>
+    <text x="590" y="39">OpenAI (terra)</text>
+    <text x="795" y="39">own GET routes</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1" stroke-dasharray="3 4" opacity="0.5">
+    <line x1="90" y1="52" x2="90" y2="318"/>
+    <line x1="340" y1="52" x2="340" y2="318"/>
+    <line x1="590" y1="52" x2="590" y2="318"/>
+    <line x1="795" y1="52" x2="795" y2="318"/>
+  </g>
+
+  <!-- Messages -->
+  <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#ana-arrow)">
+    <line x1="90" y1="82" x2="338" y2="82"/>
+    <line x1="340" y1="114" x2="588" y2="114"/>
+    <line x1="590" y1="146" x2="342" y2="146"/>
+    <line x1="795" y1="210" x2="342" y2="210"/>
+    <line x1="340" y1="242" x2="588" y2="242"/>
+    <line x1="590" y1="274" x2="342" y2="274"/>
+    <line x1="340" y1="306" x2="92" y2="306"/>
+  </g>
+  <line x1="340" y1="178" x2="793" y2="178" stroke="#3a86c8" stroke-width="2" marker-end="url(#ana-arrow-accent)"/>
+
+  <g font-size="11" text-anchor="middle">
+    <text x="215" y="76">POST {question}</text>
+    <text x="465" y="108">question + tools from OpenAPI</text>
+    <text x="465" y="140">tool call: query_rows(…)</text>
+    <text x="566" y="172" fill="#3a86c8" font-weight="600">in-process GET as this user only</text>
+    <text x="566" y="204">JSON rows</text>
+    <text x="465" y="236">tool result (≤ 5 calls, then stop)</text>
+    <text x="465" y="268">answer text + table</text>
+    <text x="215" y="300">answer · table · checked source links</text>
+  </g>
+</svg>

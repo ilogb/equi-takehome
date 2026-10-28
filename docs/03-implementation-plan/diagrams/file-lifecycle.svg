@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 310" role="img" aria-label="File lifecycle: sync queues a new file; a worker claims it and processes it; it ends done, needs review, failed, unsupported or scanned with no text; retryable errors go back to queued with backoff of 30 seconds, 2 minutes, then 10 minutes, and fail after that; Retry and Re-extract re-queue a file by hand." font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="currentColor">
+  <defs>
+    <marker id="life-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <g fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="150" y="132" width="120" height="44" rx="22"/>
+    <rect x="350" y="132" width="130" height="44" rx="22"/>
+    <rect x="720" y="40" width="180" height="36" rx="18"/>
+    <rect x="720" y="92" width="180" height="36" rx="18"/>
+    <rect x="720" y="144" width="180" height="36" rx="18"/>
+    <rect x="720" y="196" width="180" height="36" rx="18"/>
+    <rect x="720" y="248" width="180" height="36" rx="18"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="210" y="158" font-weight="600">queued</text>
+    <text x="415" y="158" font-weight="600">processing</text>
+    <text x="810" y="62" font-weight="600">done</text>
+    <text x="810" y="114" font-weight="600">needs review</text>
+    <text x="810" y="166" font-weight="600">failed</text>
+    <text x="810" y="218" font-weight="600">unsupported</text>
+    <text x="810" y="270" font-weight="600">scanned: no text</text>
+  </g>
+
+  <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#life-arrow)">
+    <line x1="30" y1="154" x2="148" y2="154"/>
+    <line x1="270" y1="154" x2="348" y2="154"/>
+    <polyline points="480,154 530,154 530,58 718,58"/>
+    <polyline points="530,110 718,110"/>
+    <polyline points="530,162 718,162"/>
+    <polyline points="530,154 530,214 718,214"/>
+    <polyline points="530,214 530,266 718,266"/>
+    <path d="M415,176 C415,248 210,248 210,178"/>
+    <path d="M810,40 C810,8 210,8 210,130"/>
+  </g>
+
+  <g font-size="11">
+    <text x="88" y="146" text-anchor="middle">new file seen</text>
+    <text x="88" y="172" text-anchor="middle">(poll · subfolders)</text>
+    <text x="309" y="146" text-anchor="middle">claimed</text>
+    <text x="309" y="172" text-anchor="middle">lease</text>
+    <text x="625" y="52" text-anchor="middle">extracted</text>
+    <text x="625" y="104" text-anchor="middle">flagged rows</text>
+    <text x="625" y="156" text-anchor="middle">retries used up · corrupt</text>
+    <text x="625" y="208" text-anchor="middle">wrong type · &gt;50 pages</text>
+    <text x="625" y="260" text-anchor="middle">&gt;½ pages without text</text>
+    <text x="312" y="268" text-anchor="middle">retryable error → back off 30 s · 2 min · 10 min</text>
+    <text x="470" y="52" text-anchor="middle">Retry · Re-extract (manual)</text>
+  </g>
+</svg>
