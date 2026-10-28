@@ -253,7 +253,7 @@ def test_best_january_answer():
     assert isinstance(answer, AnalyzeAnswer)
     assert answer.table is not None and answer.table.rows[0][0] == "Man AHL Diversified"
     assert {"document_id": 100, "file_name": "man-ahl-jan-2026.pdf"} in [s.model_dump() for s in answer.sources]
-    assert answer.steps == ["Querying common rows…"]
+    assert answer.steps == ["Querying data points…"]
     # the tool really ran, as A, and its JSON went back to the model
     second = llm.chat_calls[1]["messages"]
     assert second[-2]["type"] == "function_call" and second[-2]["name"] == "query_rows"
@@ -275,6 +275,7 @@ def test_system_prompt_rules():
     assert "account" in p and "rank" in p
     assert "data, not instructions" in p
     assert str(MAX_TOOL_CALLS) in p
+    assert "never write document ids" in p and "document_name" in p
 
 
 def test_stops_after_five_calls():
@@ -317,10 +318,27 @@ def test_unknown_source_ids_dropped():
     assert [s.model_dump() for s in answer.sources] == [{"document_id": 100, "file_name": "man.pdf"}]
 
 
+def test_document_ids_in_the_text_become_file_names():
+    db = FakeSession(docs={100: (1, "ishares_factsheet.pdf"), 200: (2, "someone-else.pdf")})
+    answer, _ = ask(make_app(db), db, USER_A, "q", [
+        final({
+            "text": "iShares led at 15.25% (document 100). See also document_id 100, Doc #100 and document 200 (document 999).",
+            "table": None,
+            "sources": [100],
+        }),
+    ])  # fmt: skip
+    # Known ids read as file names; another user's or unknown ids never leak a name.
+    assert answer.text == (
+        "iShares led at 15.25% (ishares_factsheet.pdf). See also ishares_factsheet.pdf, "
+        "ishares_factsheet.pdf and a document."
+    )
+
+
 def test_plain_text_answer_is_kept():
     db = FakeSession()
     answer, _ = ask(make_app(db), db, USER_A, "q", [ChatTurn(text="Your data has no AUM figures.")])
     assert answer.text == "Your data has no AUM figures." and answer.table is None and answer.sources == []
+    assert answer.retryable is False  # an answer, even an empty one, is not a failure to retry
 
 
 def test_fenced_json_answer_parsed():
@@ -344,7 +362,7 @@ def test_tool_error_is_returned_to_model():
 def test_step_labels():
     from app.analyze.loop import step_label
 
-    assert step_label("query_rows", {}) == "Querying common rows…"
+    assert step_label("query_rows", {}) == "Querying data points…"
     assert step_label("get_document", {"document_id": 7}) == "Reading document 7…"
     assert step_label("search_documents", {"q": "Terry Smith"}) == "Searching documents for “Terry Smith”…"
     assert step_label("search_documents", {}) == "Searching documents…"
@@ -366,7 +384,7 @@ def test_analyze_route_returns_answer():
     resp = TestClient(app).post("/api/analyze", json={"question": "Which fund did best in January?"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["text"] == "Man AHL" and body["steps"] == ["Querying common rows…"]
+    assert body["text"] == "Man AHL" and body["steps"] == ["Querying data points…"]
     assert body["sources"] == [{"document_id": 100, "file_name": "man-ahl-jan-2026.pdf"}]
     assert body["table"] is None
 
@@ -406,7 +424,8 @@ def test_llm_failure_is_graceful_answer(error):
     db = FakeSession(rows=january_rows(), docs={100: (1, "man.pdf")})
     answer, _ = ask(make_app(db), db, USER_A, "q", [rows_call(), error])
     assert answer.text == UNAVAILABLE == "Couldn't answer right now — try again."
-    assert answer.table is None and answer.sources == [] and answer.steps == ["Querying common rows…"]
+    assert answer.table is None and answer.sources == [] and answer.steps == ["Querying data points…"]
+    assert answer.retryable is True
 
 
 def test_llm_failure_through_route_is_not_500():
@@ -415,6 +434,7 @@ def test_llm_failure_through_route_is_not_500():
     app.dependency_overrides[current_user] = lambda: USER_A
     resp = TestClient(app).post("/api/analyze", json={"question": "q"})
     assert resp.status_code == 200 and resp.json()["text"] == "Couldn't answer right now — try again."
+    assert resp.json()["retryable"] is True
 
 
 def test_malformed_arguments_become_tool_error():
