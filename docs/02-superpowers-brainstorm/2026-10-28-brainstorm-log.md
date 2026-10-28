@@ -503,3 +503,17 @@ Verification is the slow review, and it is not needed.
 CapRover. A Reconnect banner covers the weekly expiry. Publishing is optional
 and deferred. This replaces Q30. The allowlist and test user is the user's
 account, imranbrown1@gmail.com.
+
+### Q35 — Subfolders (reverses spec §3 "top level only")
+**Context.** The user's Drive folder "Equi Finance Docs" holds the fixtures
+in subfolders (`docs/real`, `docs/synthetic`). The approved spec reads only
+files directly in the chosen folder (Claude's call, §13 #2).
+**Question.** Your Drive folder has subfolders. The spec reads only files
+placed directly in the chosen folder. Which do you want?
+**Options.** Include subfolders (recommended) · Top level only, flatten in Drive.
+**Answer.** Include subfolders (Recommended).
+**Outcome.** The app reads every supported file anywhere below the chosen
+folder. Sync keeps a cached list of descendant folder ids and checks a
+changed file's parents against it. The Library shows each file's path
+relative to the chosen folder. This goes into the spec amendments with the
+spike's E1–E9 and Q34.
