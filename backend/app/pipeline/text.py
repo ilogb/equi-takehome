@@ -61,6 +61,11 @@ def clean_html(html: str) -> str:
 
 def eml_body(data: bytes) -> str:
     """Return the largest text/html part, else the text/plain body."""
+    return eml_part(data)[0]
+
+
+def eml_part(data: bytes) -> tuple[str, str]:
+    """Return (body, subtype): the largest text/html part, else text/plain, else ("", "plain")."""
     message = BytesParser(policy=policy.default).parsebytes(data)
     for subtype in ("html", "plain"):
         parts = [
@@ -69,8 +74,8 @@ def eml_body(data: bytes) -> str:
             if p.get_content_type() == f"text/{subtype}" and not p.is_attachment()
         ]
         if parts:
-            return max((p.get_content() for p in parts), key=len)
-    return ""
+            return max((p.get_content() for p in parts), key=len), subtype
+    return "", "plain"
 
 
 def load_text(data: bytes, kind: FileKind) -> LoadedText:

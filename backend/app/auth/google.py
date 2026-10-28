@@ -68,8 +68,8 @@ def _flow(settings: Settings, code_verifier: str | None = None) -> Flow:
 def authorization_url(settings: Settings, state: str) -> tuple[str, str | None]:
     """(URL to send the browser to, PKCE code verifier to keep until the callback)."""
     flow = _flow(settings)
-    # prompt=consent makes Google return a refresh token on every sign-in.
-    url, _ = flow.authorization_url(access_type="offline", prompt="consent", state=state)
+    # consent forces a refresh token on every sign-in; select_account always shows the chooser.
+    url, _ = flow.authorization_url(access_type="offline", prompt="select_account consent", state=state)
     return url, flow.code_verifier
 
 

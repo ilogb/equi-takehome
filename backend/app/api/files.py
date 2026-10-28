@@ -1,13 +1,16 @@
 """File list, retry / re-extract, and original-content streaming."""
 
+import html
+
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import current_user, user_source
 from app.db import get_session
 from app.jobs.queue import enqueue
+from app.pipeline.text import eml_part
 from app.models import CommonRow, Document, SourceFile, User
 from app.sources.base import DocumentSource, SourceError
 
@@ -138,8 +141,12 @@ def file_content(
     user: User = Depends(current_user),
     session: Session = Depends(get_session),
     source: DocumentSource = Depends(user_source),
-) -> StreamingResponse:
+) -> Response:
     file = _own_file(session, user, file_id)
+    is_eml = (
+        file.mime_type.split(";")[0].strip().lower() == "message/rfc822"
+        or file.name.lower().endswith(".eml")
+    )
     chunks = source.stream(file.drive_file_id)
     try:
         # The generator only talks to Drive on first iteration: pull one chunk so a
@@ -151,6 +158,18 @@ def file_content(
         file.missing_in_drive = True
         session.commit()
         raise HTTPException(status_code=404, detail="No longer in Drive") from None
+
+    if is_eml:
+        # Browsers won't render rfc822 in an iframe: serve the extracted body as HTML.
+        raw = first + b"".join(chunks)
+        body_html, subtype = eml_part(raw)
+        if subtype != "html":
+            body_html = f"<pre>{html.escape(body_html)}</pre>"
+        return Response(
+            body_html,
+            media_type="text/html; charset=utf-8",
+            headers={"X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"},
+        )
 
     def body():
         yield first

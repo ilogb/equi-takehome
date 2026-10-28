@@ -172,7 +172,7 @@ def start(client: TestClient) -> str:
     assert resp.status_code in (302, 307)
     q = parse_qs(urlparse(resp.headers["location"]).query)
     assert q["access_type"] == ["offline"]
-    assert q["prompt"] == ["consent"]
+    assert q["prompt"] == ["select_account consent"]
     scopes = q["scope"][0].split()
     assert "openid" in scopes and "https://www.googleapis.com/auth/drive.readonly" in scopes
     assert q["redirect_uri"] == ["http://localhost:8000/api/auth/google/callback"]

@@ -1,4 +1,5 @@
 from datetime import date
+from pathlib import Path
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -159,6 +160,35 @@ def test_content_html_is_sandboxed():
     resp = c.get("/api/files/5/content")
     assert resp.headers["content-security-policy"] == "sandbox"
     assert resp.headers["content-type"].startswith("text/html")
+
+
+KESTREL = Path(__file__).resolve().parents[3] / "fixtures/synthetic/kestrel-ridge_investor-update_2026-01.eml"
+
+
+def test_content_eml_served_as_html():
+    c, _ = client(make_file("message/rfc822"), FakeSource([KESTREL.read_bytes()]))
+    resp = c.get("/api/files/5/content")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "text/html; charset=utf-8"
+    assert "1.90%" in resp.text
+    assert resp.headers["x-content-type-options"] == "nosniff"
+    assert resp.headers["content-security-policy"] == "sandbox"
+
+
+def test_content_eml_plain_text_is_escaped_in_pre():
+    raw = b"Subject: s\r\nContent-Type: text/plain\r\n\r\n<script>alert(1)</script> & more"
+    c, _ = client(make_file("message/rfc822"), FakeSource([raw]))
+    resp = c.get("/api/files/5/content")
+    assert resp.headers["content-type"] == "text/html; charset=utf-8"
+    assert "<pre>&lt;script&gt;alert(1)&lt;/script&gt; &amp; more" in resp.text
+    assert "<script>" not in resp.text
+
+
+def test_content_eml_404_marks_missing():
+    f = make_file("message/rfc822")
+    c, _ = client(f, FakeSource(error=SourceError("gone", retryable=False, status=404)))
+    assert c.get("/api/files/5/content").status_code == 404
+    assert f.missing_in_drive is True
 
 
 def test_content_404_marks_missing():
