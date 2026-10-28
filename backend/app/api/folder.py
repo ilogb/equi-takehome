@@ -88,6 +88,7 @@ def folder_status(session: Session, user: User, watched: WatchedFolder) -> dict:
     )
     return {
         "name": watched.name,
+        "drive_folder_id": watched.drive_folder_id,
         "last_synced_at": watched.last_synced_at,
         "last_error": watched.last_error,
         "counts_by_status": counts,

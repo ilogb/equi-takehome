@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.dialects import postgresql
 
 from app.api import files as files_api
+from app.api import folder as folder_api
 from app.api.files import files_query
 from app.api.funds import funds_query
 from app.api.rows import MAX_LIMIT, RowFilters, row_json, rows_count_query, rows_csv, rows_query
@@ -14,7 +15,7 @@ from app.auth.deps import current_user, user_source
 from app.config import Settings
 from app.db import get_session
 from app.main import create_app
-from app.models import CommonRow, SourceFile, User
+from app.models import CommonRow, Document, SourceFile, User, WatchedFolder
 from app.sources.base import SourceError
 
 
@@ -200,10 +201,66 @@ def test_file_json_shape():
     r = SimpleNamespace(
         id=1, name="a.pdf", path="x/a.pdf", mime_type="application/pdf", status="done", error=None,
         missing_in_drive=False, doc_type="factsheet", manager="M", funds=["F"], as_of_date=date(2026, 1, 31),
-        tags=["t"], row_count=3, created_at=None,
+        tags=["t"], row_count=3, created_at=None, document_id=7, drive_file_id="d9",
     )  # fmt: skip
     out = files_api.file_json(r)
     assert out["kind"] == "pdf" and out["row_count"] == 3 and out["updated_at"] is None
+    assert out["document_id"] == 7 and out["drive_file_id"] == "d9"
+    r.document_id = None
+    assert files_api.file_json(r)["document_id"] is None
+
+
+def test_files_query_selects_document_id_and_drive_file_id():
+    text = sql(files_query(9))
+    assert "document.id AS document_id" in text and "source_file.drive_file_id" in text
+    assert "source_file.user_id = 9" in text
+
+
+class DocSession:
+    def __init__(self, found):
+        self.found = found
+
+    def execute(self, stmt):
+        return SimpleNamespace(first=lambda: self.found, all=lambda: [])
+
+    def scalars(self, stmt):
+        return SimpleNamespace(all=lambda: [])
+
+
+def doc_client(found):
+    app = create_app(settings())
+    app.dependency_overrides[get_session] = lambda: DocSession(found)
+    app.dependency_overrides[current_user] = lambda: User(id=1, email="a@b.c")
+    return TestClient(app)
+
+
+def test_get_document_includes_file_object():
+    f = SourceFile(
+        id=5, user_id=1, drive_file_id="d1", name="a.pdf", path="x/a.pdf", mime_type="application/pdf",
+        status="failed", error="boom", missing_in_drive=True,
+    )  # fmt: skip
+    d = Document(id=3, user_id=1, source_file_id=5, tags=[], funds=[])
+    body = doc_client((d, f)).get("/api/documents/3").json()
+    assert body["file"] == {
+        "id": 5, "status": "failed", "error": "boom", "missing_in_drive": True,
+        "mime_type": "application/pdf", "kind": "pdf", "path": "x/a.pdf", "name": "a.pdf",
+        "drive_file_id": "d1",
+    }  # fmt: skip
+    assert body["source_file_id"] == 5 and body["status"] == "failed"
+
+
+def test_get_document_query_scoped_and_404():
+    assert doc_client(None).get("/api/documents/3").status_code == 404
+
+
+def test_folder_status_includes_drive_folder_id():
+    class S:
+        def execute(self, stmt):
+            return SimpleNamespace(all=lambda: [("done", 2)])
+
+    w = WatchedFolder(user_id=1, drive_folder_id="fold1", name="N", last_synced_at=None, last_error=None)
+    out = folder_api.folder_status(S(), User(id=1, email="a@b.c", needs_reconnect=False), w)
+    assert out["drive_folder_id"] == "fold1" and out["name"] == "N" and out["counts_by_status"] == {"done": 2}
 
 
 def test_analyze_routes_have_operation_ids():

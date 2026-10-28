@@ -32,6 +32,8 @@ def files_query(user_id: int, status: str | None = None, q: str | None = None) -
             SourceFile.error,
             SourceFile.missing_in_drive,
             SourceFile.created_at,
+            SourceFile.drive_file_id,
+            Document.id.label("document_id"),
             Document.doc_type,
             Document.manager,
             Document.funds,
@@ -87,6 +89,8 @@ def file_json(row) -> dict:
         "tags": row.tags or [],
         "row_count": row.row_count or 0,
         "updated_at": row.created_at,
+        "document_id": row.document_id,
+        "drive_file_id": row.drive_file_id,
     }
 
 
