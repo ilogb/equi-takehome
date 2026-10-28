@@ -4,6 +4,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 
+from app.analyze.tools import build_tools
+from app.api import analyze as analyze_api
 from app.api import auth as auth_api
 from app.api import documents as documents_api
 from app.api import files as files_api
@@ -21,6 +23,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     app = FastAPI(title="Document Intelligence")
     app.state.settings = settings
+    # Per-process secret for Analyze's in-process tool calls; never logged or returned.
+    app.state.internal_token = secrets.token_urlsafe(32)
 
     # Signed, HttpOnly, SameSite=Lax cookie. Without SESSION_SECRET a throwaway key is used
     # so the app still starts; every auth route then refuses with AuthConfigError.
@@ -50,8 +54,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(auth_api.router)
     app.include_router(folder_api.router)
-    for module in (files_api, documents_api, rows_api, funds_api, meta_api, search_api):
+    for module in (files_api, documents_api, rows_api, funds_api, meta_api, search_api, analyze_api):
         app.include_router(module.router)
+    build_tools(app)  # fails startup if an `analyze` GET route lacks an operation id or docstring
     return app
 
 

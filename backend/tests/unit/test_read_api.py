@@ -211,7 +211,7 @@ def test_analyze_routes_have_operation_ids():
     found = {}
     for path, methods in spec["paths"].items():
         for method, op in methods.items():
-            if "analyze" in op.get("tags", []):
+            if method == "get" and "analyze" in op.get("tags", []):  # tools are the GETs; POST /api/analyze is not
                 assert op.get("operationId") and not op["operationId"].startswith(("get_document_api", "query_rows_api")), path
                 assert op.get("description"), path
                 found[op["operationId"]] = path

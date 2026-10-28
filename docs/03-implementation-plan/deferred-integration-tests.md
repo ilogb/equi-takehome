@@ -113,3 +113,11 @@ Seed through `persist_extraction` with FakeLLM (chunks embedded); `tests/integra
 - `test_similar_same_fund_first`: `similar_documents` for Fundsmith Jan returns Fundsmith Aug first, never Jan itself.
 - `test_prose_document_searchable`: the no-rows document from Task 9 is found by a word in it.
 - `test_search_scoped_to_user`: user B's chunks never appear in user A's `/api/search` hits or `similar_for_first`.
+
+## Task 14
+
+Seed two users through `persist_extraction` with FakeLLM; `tests/integration/test_analyze.py`. The unit tests cover the loop, the tool builder and the identity check against a fake session; these need real Postgres.
+
+- `test_analyze_best_january_real_db`: user A's `POST /api/analyze` "Which fund did best in January?" with a scripted FakeLLM calling `query_rows` (`measure=return&period_kind=month&start=2026-01-01&end=2026-01-31&sort=value&order=desc`): the tool output fed back to the model has Man AHL first at `"0.0842"`; the answer's `sources` resolve to A's real document id and file name.
+- `test_analyze_tools_scoped_to_user_real_db` (Review Focus 3): the same script for user B returns no A rows in any tool output (`query_rows`, `get_document` on A's document id -> 404 error result, `list_funds`, `describe_data`, `search_documents`), and A's document ids cited by the model are dropped from B's `sources`.
+- `test_analyze_inner_calls_use_own_sessions`: the in-process tool requests open their own DB sessions (real `get_session`) while the outer request holds one; no deadlock or pool exhaustion with the default pool across 5 calls.
