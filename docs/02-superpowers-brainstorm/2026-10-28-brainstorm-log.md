@@ -222,3 +222,42 @@ Manual only.
 **Answer.** Poll every 60s + Sync now (Recommended).
 **Outcome.** The Drive Changes API is polled every 60 s, plus a Sync now
 button. This behaves the same locally and on CapRover.
+
+## Round 3 (Q13–Q16)
+
+### Q13 — Document metadata
+**Question.** "Good metadata" from your MVP: what does the LLM tag each
+document with?
+**Options.** Fixed fields + free tags (recommended) · Fixed fields only ·
+Free-form tags only.
+**Answer (verbatim, typed as "Other").**
+> the free tags, i dont think we would put a ux and filter with those on the
+> UI at least, vector search maybe
+**Reasoning.** As stated: free tags wouldn't get a UI filter, but might help
+vector search.
+**Outcome.** Interpretation confirmed in Q17.
+
+### Q14 — "Show similar results"
+**Question.** "Show similar results": similar how?
+**Options.** Same fund/manager + vector neighbours (recommended) · Vector
+neighbours only · Not in MVP.
+**Answer.** Same fund/manager + vector neighbours (Recommended).
+**Outcome.** Similar results show documents for the same fund or manager first
+(for example Fundsmith January and August), then the nearest documents by
+embedding.
+
+### Q15 — File types
+**Question.** Which file types does the MVP handle? (multi-select)
+**Options.** PDF · CSV · HTML / .eml emails · Google Docs/Sheets.
+**Answer.** PDF, CSV, HTML / .eml emails.
+**Outcome.** PDF, CSV, HTML and .eml are in. Google-native Docs/Sheets are
+out of the MVP.
+
+### Q16 — Measuring extraction quality
+**Question.** How do we know extraction is right?
+**Options.** Score vs truth files (recommended) · Truth files + LLM judge ·
+Unit tests only.
+**Answer.** Score vs truth files (Recommended).
+**Outcome.** `make eval` runs extraction over the fixtures and scores the
+results against the `.truth.json` files (precision and recall per document).
+No judge model.
