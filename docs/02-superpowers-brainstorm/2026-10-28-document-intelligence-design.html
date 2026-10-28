@@ -1,0 +1,417 @@
+<title>Equi Doc Intelligence Spec</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+/* Layout: a sticky contents rail beside one readable column of spec text; rail folds away on phones. */
+:root {
+  --bg: #f5f7f9; --paper: #ffffff; --ink: #19222c; --muted: #5d6a77; --line: #dce3ea;
+  --accent: #1d5f8a; --accent-soft: #e5eef6; --call: #fff4d6; --call-ink: #6b4f00; --tbd: #fde2df;
+  --display: "Source Serif 4", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10151b; --paper: #171f28; --ink: #e4eaf0; --muted: #98a6b4; --line: #2a3541;
+  --accent: #7db6df; --accent-soft: #1c3244; --call: #33290f; --call-ink: #f0d58a; --tbd: #4a1f1c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #10151b; --paper: #171f28; --ink: #e4eaf0; --muted: #98a6b4; --line: #2a3541;
+  --accent: #7db6df; --accent-soft: #1c3244; --call: #33290f; --call-ink: #f0d58a; --tbd: #4a1f1c; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.62; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 32px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); } nav.toc { position: static !important; } }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); font-size: 14px; }
+nav.toc .label { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.toc ul ul { display: none; }
+nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 4px 10px; border-left: 2px solid var(--line); }
+nav.toc a:hover { color: var(--ink); border-color: var(--accent); }
+nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+article { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: clamp(20px, 4vw, 48px); min-width: 0; }
+article > * { max-width: 72ch; }
+article h1 { font-family: var(--display); font-size: clamp(26px, 3.4vw, 34px); line-height: 1.2; margin: 0 0 18px; text-wrap: balance; }
+article h2 { font-family: var(--display); font-size: 23px; margin: 44px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); text-wrap: balance; scroll-margin-top: 20px; }
+article h3 { font-size: 16px; font-weight: 600; margin: 26px 0 6px; }
+article p, article li { margin: 0 0 10px; }
+article ul, article ol { padding-left: 1.3em; }
+article li > ul { margin-top: 6px; }
+code { font-family: var(--mono); font-size: .86em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+pre { max-width: 100% !important; overflow-x: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-size: 13px; line-height: 1.45; }
+pre code { background: none; padding: 0; }
+blockquote.callout { margin: 0 0 18px; padding: 12px 16px; background: var(--accent-soft); border-radius: 8px; border-left: 3px solid var(--accent); }
+blockquote.callout p:last-child { margin-bottom: 0; }
+.call { background: var(--call); color: var(--call-ink); font-size: .82em; font-weight: 500; padding: 1px 7px; border-radius: 99px; white-space: nowrap; }
+.qref { font-family: var(--mono); font-size: .78em; color: var(--accent); border: 1px solid var(--accent); padding: 0 6px; border-radius: 99px; white-space: nowrap; }
+mark.tbd { background: var(--tbd); color: var(--ink); padding: 0 4px; border-radius: 3px; font-weight: 600; }
+table { border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; max-width: 100%; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+a { color: var(--accent); }
+</style>
+<div class="wrap">
+  <nav class="toc" aria-label="Contents"><div class="label">Contents</div><div class="toc">
+<ul>
+<li><a href="#1-intent">1. Intent</a></li>
+<li><a href="#2-success-looks-like">2. Success looks like</a></li>
+<li><a href="#3-goals-non-goals-anti-goals">3. Goals, non-goals, anti-goals</a></li>
+<li><a href="#4-architecture">4. Architecture</a></li>
+<li><a href="#5-sign-in-users-and-drive-access">5. Sign-in, users and Drive access</a></li>
+<li><a href="#6-sync">6. Sync</a></li>
+<li><a href="#7-processing-pipeline">7. Processing pipeline</a></li>
+<li><a href="#8-screens">8. Screens</a></li>
+<li><a href="#9-ask-questions-over-the-apps-own-apis">9. Ask: questions over the app's own APIs</a></li>
+<li><a href="#10-data-model-sketch">10. Data model (sketch)</a></li>
+<li><a href="#11-testing">11. Testing</a></li>
+<li><a href="#12-security">12. Security</a></li>
+<li><a href="#13-claudes-calls-please-check">13. Claude's calls (please check)</a></li>
+<li><a href="#14-open">14. Open</a></li>
+</ul>
+</div>
+</nav>
+  <article><h1 id="document-intelligence-web-app-design-v2-guided-brainstorm">Document Intelligence Web App — Design (v2, guided brainstorm)</h1>
+<blockquote class="callout">
+<p><strong>Provenance.</strong> Built from the user's no-AI notes (<code>docs/01-human-brainstorm/</code>)
+and the guided brainstorm (<code>2026-10-28-brainstorm-log.md</code>, Q1–Q22). Each
+decision cites the question that settled it. Anything marked <strong>(Claude's
+call)</strong> is a gap Claude filled; it's listed again in §13 so it can be
+checked. The blind v0 (<code>docs/00-only-claude-ai/</code>) is superseded wherever
+they differ.</p>
+<p><strong>Status:</strong> draft. §8 (screen layout) waits on the mockup variant choice.</p>
+</blockquote>
+<h2 id="1-intent">1. Intent</h2>
+<p>An allocator's Drive folder fills up with documents from many managers:
+factsheets, performance reports, emailed updates, CSV exports, and account
+statements mixed in among them. Every one looks different. The app connects
+to one chosen Drive folder, keeps it in sync, and turns every document into
+two things:</p>
+<ul>
+<li><strong>Searchable documents.</strong> Metadata, tags, and every table <strong>as the manager
+  printed it</strong>, so a person can find what they know is in there.</li>
+<li><strong>Common rows.</strong> Every number becomes <code>fund · period · measure · value</code>, so
+  one table and one question can compare every manager.</li>
+</ul>
+<p>In the user's words <span class="qref">Q4</span>: <em>"as printed is nice to have for fund by fund
+search, question level. The common rows are the insights that make the
+search more than a search."</em></p>
+<p>The guiding value is from the v1 notes: <strong>accuracy over speed</strong>. <em>"Whats
+more frustrating is losing confidence that the system finds something that I
+KNOW is inside of a file."</em> Up to ~15 s for a correct answer is acceptable.</p>
+<h2 id="2-success-looks-like">2. Success looks like</h2>
+<ol>
+<li>Run <code>docker compose up</code> locally (with your own OpenAI key and Google OAuth
+   client), or open the CapRover deployment as an allowlisted user.</li>
+<li>Sign in with Google, then pick one folder (for example the one holding
+   <code>fixtures/</code>).</li>
+<li>The Library fills in as files are processed: type, manager, fund, as-of
+   date, tags, status. The Harborline statement is labelled <code>statement</code>; a
+   scanned PDF is flagged "Scanned: no text".</li>
+<li>The Data table shows common rows across all funds. Filter to monthly
+   returns, January 2026, and sort: Man AHL Diversified +8.42% is top.</li>
+<li>In the search box, switch to <strong>Ask</strong> and type "Which fund had the best
+   January return?". You get the answer with a ranked table, each row linking
+   to its source document.</li>
+<li>In <strong>Simple</strong> mode, search "Terry Smith" and get the Fundsmith factsheets,
+   with similar documents beneath them.</li>
+<li>Drop a new factsheet into the Drive folder. Within about a minute it
+   appears, gets processed, and its numbers join the table, without a click.</li>
+<li><code>make eval</code> prints precision and recall against the truth files.</li>
+</ol>
+<h2 id="3-goals-non-goals-anti-goals">3. Goals, non-goals, anti-goals</h2>
+<p><strong>Goals (MVP)</strong>
+- Google sign-in that is also the app login; allowlisted accounts only <span class="qref">Q11</span>.
+- One chosen Drive folder per user, top level only <span class="qref">Q3; top level only is
+  Claude's call</span>.
+- Auto-sync by polling every 60 s, plus Sync now <span class="qref">Q12</span>.
+- File types: PDF, CSV, <code>.xlsx</code>, HTML, <code>.eml</code> <span class="qref">Q15, Q25</span>.
+- LLM extraction of metadata, printed tables and common rows, with no
+  per-manager setup (brief).
+- Account statements classified and extracted as account-level measures,
+  kept apart from fund returns <span class="qref">Q21</span>.
+- Scanned or image-only PDFs detected and flagged, not extracted <span class="qref">Q22</span>.
+- One search box with <strong>Simple</strong> and <strong>Ask</strong> modes <span class="qref">Q20</span>.
+- "Needs review" and "sources differ" markers <span class="qref">Q19</span>.
+- Every number links to its source document <span class="qref">Q8</span>.
+- Similar results: same fund or manager first, then vector neighbours <span class="qref">Q14</span>.
+- <code>make eval</code> scored against the truth files <span class="qref">Q16</span>.
+- Runs locally with <code>docker compose up</code>; deployed on CapRover <span class="qref">Q5, Q6</span>.</p>
+<p><strong>Non-goals (MVP)</strong>
+- Roles, admin, or hiding documents from search <span class="qref">Q18</span>.
+- Page- or quote-level provenance (Q8: document only).
+- Extracting scanned PDFs via vision <span class="qref">Q22</span>.
+- Google-native Docs/Sheets <span class="qref">Q15</span>.
+- Drive push notifications <span class="qref">Q12</span>.
+- An LLM judge for answers <span class="qref">Q16</span>.
+- A full autonomous agent: v2 <span class="qref">Q7, Q10</span>.
+- Dropbox and other sources: the code keeps a source interface so they can be
+  added later; only Google Drive is built (v1 notes; Claude's call on the
+  interface).
+- Sub-folders; documents over 50 pages <span class="call">Claude's call</span>.
+- Keeping copies of the original files: originals stay in Drive <span class="qref">Q23</span>.
+- Re-processing a file edited in place, and removing data for deleted or
+  moved files <span class="qref">Q24</span>.
+- Caching layers, cron scale-out, BigQuery (v1 notes list them under
+  Scaling: later).</p>
+<p><strong>Anti-goals</strong>
+- A number shown with no way to reach the document it came from.
+- Quietly picking one value when two documents disagree.
+- An account's return, or a holding's unrealized gain, appearing as a fund
+  return (the Harborline trap).
+- Percent/decimal mix-ups (0.8% stored as 0.8).
+- Q&amp;A that changes data or invents an answer the data doesn't support.
+- Anything that needs the user to configure a parser per manager.</p>
+<h2 id="4-architecture">4. Architecture</h2>
+<pre><code> Browser (React)  ──HTTPS──►  api (FastAPI)  ──────────►  Postgres 16 + pgvector
+      ▲                         │  OpenAPI spec               ▲
+      │                         │  /api/ask loop ──► LLM      │
+      │                         ▼                             │
+      │                     worker (same codebase)  ──────────┘
+      │                       • sync poller (60 s per user)
+      │                       • job runner: download → detect → extract → embed
+      ▼                         │
+ Google sign-in ◄──OAuth──►  Google Drive API (drive.readonly)
+                                │
+                           LLM provider interface ──► OpenAI (default)
+</code></pre>
+<ul>
+<li><strong>Services (docker compose):</strong> <code>db</code> (pgvector/pgvector:pg16), <code>api</code>,
+  <code>worker</code>, <code>web</code>. <code>api</code> and <code>worker</code> share one Python package; the worker is
+  a second entrypoint <span class="call">Claude's call: no Redis or Celery; jobs live in a
+  Postgres table claimed with <code>SELECT … FOR UPDATE SKIP LOCKED</code></span>.</li>
+<li><strong>Stack <span class="qref">Q5</span>:</strong> Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Postgres 16 +
+  pgvector, React + TypeScript + Vite, TanStack Query and Table.</li>
+<li><strong>LLM provider <span class="qref">Q9</span>:</strong> one interface, <code>LLMProvider</code>, with three operations:
+  structured extraction (file in, schema-validated JSON out), tool-calling
+  chat, and embeddings. <code>OpenAIProvider</code> is the only implementation and the
+  default. Model names come from config. Exact default model ids are fixed
+  during the spike against OpenAI's current docs, not guessed here.</li>
+<li><strong>Deployment <span class="qref">Q6</span>:</strong> CapRover, with one app each for <code>api</code>, <code>worker</code> and
+  <code>web</code>, and Postgres with pgvector as a CapRover app <span class="call">Claude's call on the
+  layout</span>. Runs on the user's OpenAI key. Local runs use the reviewer's own
+  key and Google OAuth client.</li>
+</ul>
+<h2 id="5-sign-in-users-and-drive-access">5. Sign-in, users and Drive access</h2>
+<ul>
+<li><strong>Google OAuth web flow</strong> with scopes <code>openid email profile
+  https://www.googleapis.com/auth/drive.readonly</code>. One sign-in both logs the
+  user in and grants Drive access <span class="qref">Q11</span>. <code>drive.readonly</code> is needed because
+  <code>drive.file</code> can't see files other people drop into the folder.</li>
+<li><strong>Allowlist:</strong> <code>ALLOWED_EMAILS</code> (comma-separated) in config. Anyone else
+  gets a "not on the list" page and nothing is stored. The Google OAuth app
+  stays in Testing mode with the same people added as test users. The README
+  explains both steps.</li>
+<li><strong>Session:</strong> a signed, HTTP-only cookie. Google refresh tokens are stored
+  Fernet-encrypted <span class="call">Claude's call</span>.</li>
+<li><strong>Isolation:</strong> every row (folder, file, document, table, common row, chunk,
+  job) carries <code>user_id</code>. Every query is scoped by it, including the Ask
+  tools, which run as the asking user.</li>
+<li><strong>Revoked access:</strong> a failed token refresh sets <code>needs_reconnect</code>; the UI
+  shows Reconnect; nothing is deleted.</li>
+</ul>
+<h2 id="6-sync">6. Sync</h2>
+<ul>
+<li><strong>Picking the folder:</strong> a searchable list of the user's Drive folders. The
+  user picks one and can change it later; changing it clears that user's data
+  after a confirmation <span class="call">Claude's call</span>.</li>
+<li><strong>Order on selection:</strong> save <code>changes.getStartPageToken</code> <strong>first</strong>, then
+  list the folder and queue every supported file. A file added during the
+  listing is then caught by the next poll.</li>
+<li><strong>Every 60 s per user, and on Sync now:</strong> <code>changes.list</code> from the token. A
+  change counts if the file's <code>parents</code> include the folder.</li>
+<li>New file → queued.</li>
+<li>A file is processed once. An edit in place is ignored and the first
+    result is kept; a manual <strong>Re-extract</strong> button covers the rare case
+    <span class="qref">Q24</span>.</li>
+<li>Trashed, removed, or moved out of the folder → ignored in the MVP. Its
+    data stays, and the viewer shows "No longer in Drive" if opened <span class="qref">Q24</span>.</li>
+<li><strong>Expired change token (410):</strong> re-list the folder and queue any file not
+  seen before.</li>
+<li><strong>Unsupported types:</strong> listed in the Library as "Unsupported", not
+  processed.</li>
+<li><strong>Source interface <span class="call">Claude's call</span>:</strong> <code>DocumentSource</code> with
+  <code>list_folder</code>, <code>poll_changes</code>, <code>download</code>. Google Drive is the one
+  implementation, which keeps the v1 notes' "modular enough for drop box"
+  open without building it.</li>
+</ul>
+<h2 id="7-processing-pipeline">7. Processing pipeline</h2>
+<p>Each job: <strong>download → detect → extract → check → store → embed</strong>.</p>
+<h3 id="71-detect">7.1 Detect</h3>
+<ul>
+<li>Route by MIME type or extension: PDF, CSV, <code>.xlsx</code>, HTML, <code>.eml</code>
+  (largest <code>text/html</code> part, else <code>text/plain</code>). Anything else →
+  <code>unsupported</code>.</li>
+<li><strong>Scanned check <span class="qref">Q22</span>:</strong> extract the text layer per page with pdfplumber.
+  If more than half the pages have fewer than 20 characters of text, mark the
+  file <code>scanned_no_text</code> and stop: no LLM call (thresholds are Claude's call).</li>
+<li>PDFs over 50 pages → <code>unsupported</code>, with the reason shown.</li>
+</ul>
+<h3 id="72-extract-llm-through-llmprovider">7.2 Extract (LLM, through <code>LLMProvider</code>)</h3>
+<p>One structured-output call per document returns:
+- <strong>Metadata, fixed fields</strong> <span class="qref">Q13, Q17</span>: <code>doc_type</code> (<code>factsheet</code> ·
+  <code>performance_report</code> · <code>statement</code> · <code>investor_letter</code> · <code>other</code>),
+  <code>manager</code>, <code>funds[]</code> (name, share class), <code>as_of_date</code>, <code>currency</code>, a
+  one-line <code>summary</code>.
+- <strong>Free tags:</strong> 3–8 short tags (for example <code>global equity</code>, <code>trend
+  following</code>, <code>UCITS</code>). They feed search and appear as "tags" under results
+  and files; there's no filter for them in the UI <span class="qref">Q17</span>.
+- <strong>Printed tables:</strong> every table, with title, header rows and body rows as
+  the text strings printed, in order <span class="qref">Q4</span>.
+- <strong>Common rows:</strong> <code>entity</code> (fund or account), <code>entity_kind</code> (<code>fund</code> ·
+  <code>account</code>), <code>share_class</code> (null when the document gives none), <code>measure</code> (<code>return</code> · <code>benchmark_return</code> · <code>aum</code> · <code>nav</code> ·
+  <code>account_value</code> · <code>account_return</code>), <code>period_kind</code> (<code>month</code> · <code>qtd</code> ·
+  <code>ytd</code> · <code>1y</code> · <code>3y</code> · <code>5y</code> · <code>itd</code> · <code>calendar_year</code> · <code>other</code>),
+  <code>period_end</code>, <code>value_as_written</code>, <code>value</code>, <code>unit</code>, <code>currency</code>,
+  <code>benchmark_name</code>, and a pointer to the printed table cell it came from
+  (<code>table_index</code>, <code>row</code>, <code>col</code>) when it came from a table.
+- <strong>Prompt rules:</strong> extract only what is printed and never compute; net, not
+  gross, is the return; exposures, unrealized gains, "best month" statistics
+  and bps-over-hurdle figures are not returns; a statement's performance is
+  the account's (<code>entity_kind = account</code>); period end is the last day of the
+  period; reuse a fund name from the user's existing funds when it matches.
+  Document text is wrapped and marked as data, not instructions.
+- <strong>How the file is sent:</strong> PDFs go to the model as files, so layout and
+  tables are read visually; HTML/.eml as cleaned text with table structure
+  kept.
+- <strong>CSVs and <code>.xlsx</code> <span class="qref">Q25</span>:</strong> each <code>.xlsx</code> sheet is read with pandas
+  (openpyxl) and handled exactly like a CSV. The model sees the header and the first 20 rows and returns a
+  column mapping (long or wide layout; which columns are entity, date,
+  measure, value; unit; header and footer rows to skip). pandas applies the
+  mapping to every row. The printed table is the CSV itself <span class="call">Claude's call:
+  this keeps large CSVs like TSP fast and exact</span>.</p>
+<h3 id="73-check-deterministic-code">7.3 Check (deterministic code)</h3>
+<ul>
+<li><strong>Value re-parse:</strong> parse <code>value_as_written</code> (%, parentheses, U+2212
+  minus, <code>bps</code>, <code>m</code>/<code>bn</code>, thousands separators). If it disagrees with the
+  model's <code>value</code>, keep the parsed value and mark the row <code>needs_review</code>.</li>
+<li><strong>Sanity:</strong> a monthly return beyond ±50%, or a period end after the as-of
+  date → <code>needs_review</code>.</li>
+<li><strong>Fund identity:</strong> normalise names (case, punctuation, <code>&amp;</code>, suffixes like
+  <code>LP</code>, <code>Ltd</code>, <code>Fund</code>) and match an alias table, so <code>Northwind Global Macro
+  Fund, L.P.</code> and <code>…Fund LP</code> are one fund. Share class stays an attribute.</li>
+<li><strong>Sources differ:</strong> same user, entity, share class, measure, period kind
+  and period end across two current documents, with values differing by more than 0.00005 →
+  both rows marked; the table shows the newest as-of value with a "sources
+  differ" marker that opens both <span class="qref">Q19</span>.</li>
+<li>A file with any <code>needs_review</code> row shows "Needs review" in the Library and
+  is still displayed.</li>
+</ul>
+<h3 id="74-store-and-embed">7.4 Store and embed</h3>
+<ul>
+<li><strong>Originals are not stored <span class="qref">Q23</span>.</strong> The app keeps the Drive file id and
+  path. The in-app viewer streams the file from Drive through
+  <code>GET /api/files/{id}/content</code> with the user's token when it is opened.
+  Retry, Re-extract and <code>make eval</code> download again.</li>
+<li>Store what is derived: the document record (metadata, tags, summary,
+  extracted page text), printed tables, common rows and chunks.</li>
+<li><strong>Chunks for search:</strong> page text in pieces of roughly 800 tokens, each
+  printed table rendered as text, and a metadata card (manager, funds, type,
+  date, tags, summary). Each is embedded through <code>LLMProvider.embed</code> (OpenAI
+  embeddings, Q6) into pgvector, and indexed for Postgres full-text search.</li>
+<li><strong>Failures:</strong> API errors retry 3 times with backoff (30 s, 2 min, 10 min),
+  then <code>failed</code> with the error and a Retry button. Invalid structured output
+  gets one repair attempt.</li>
+</ul>
+<h2 id="8-screens">8. Screens</h2>
+<p>Five surfaces <span class="qref">Q20</span>, all scoped to the signed-in user:</p>
+<ol>
+<li><strong>Connect:</strong> sign in, pick a folder, sync progress.</li>
+<li><strong>Library:</strong> every file with status (<code>queued</code> · <code>processing</code> · <code>done</code> ·
+   <code>needs review</code> · <code>failed</code> · <code>unsupported</code> · <code>scanned: no text</code>), type,
+   manager, fund, as-of, tags, last synced, Sync now.</li>
+<li><strong>Document view:</strong> the file rendered in the app (PDF viewer; sandboxed
+   HTML; CSV as a table) beside its printed tables and its common rows.</li>
+<li><strong>Data table:</strong> common rows across all funds and accounts; filters for
+   fund, manager, measure, period kind and date range; needs-review and
+   sources-differ markers; each row links to its document; CSV export.</li>
+<li><strong>Unified search</strong> with a mode toggle:
+   - <strong>Simple:</strong> hybrid full-text + vector search over chunks. Results show
+     document, path, metadata, tags and a snippet, with <strong>Similar</strong> beneath:
+     same fund or manager first, then nearest documents by embedding <span class="qref">Q14</span>.
+   - <strong>Ask:</strong> the question goes to the Q&amp;A loop (§9). The answer is text,
+     optionally a data table, with links to source documents.</li>
+</ol>
+<p><strong>Layout variant: <mark class="tbd">TBD</mark> — chosen from the mockup</strong>
+(<code>2026-10-28-document-intelligence-mockup.html</code>), then recorded here with
+the reason.</p>
+<h2 id="9-ask-questions-over-the-apps-own-apis">9. Ask: questions over the app's own APIs</h2>
+<ul>
+<li><strong>Tools are the app's own endpoints <span class="qref">Q7</span>.</strong> The read endpoints that Ask may
+  use carry an OpenAPI tag (<code>ask</code>). At startup the server turns the OpenAPI
+  operations with that tag into tool definitions for the model: name,
+  description, parameter schema. The same endpoints serve the UI, so "agent
+  tools as APIs first" holds, and a v2 agent can reuse them unchanged.</li>
+<li><strong>Endpoints tagged <code>ask</code> (initial set):</strong> search documents, list funds and
+  managers, query common rows (filters, sort, limit), get a document's
+  metadata and tables, list measures and the available date range.</li>
+<li><strong>Loop <span class="qref">Q10</span>:</strong> the model may call up to 5 tools per question. The server
+  runs each as an in-process request <strong>as the asking user</strong>, GET only, and
+  returns the JSON. Then the model answers.</li>
+<li><strong>Answer shape:</strong> text, an optional table (columns + rows), and the source
+  documents cited. Each cited document id is checked against the user's
+  documents, and unknown ids are dropped.</li>
+<li><strong>Rules given to the model:</strong> January with no year means the latest January
+  in the data, and the answer says so. Mention sources-differ conflicts. If
+  the data can't answer, say what's missing.</li>
+<li><strong>Time budget:</strong> about 15 s (v1 notes). Show progress ("Querying common
+  rows…") while it runs.</li>
+</ul>
+<h2 id="10-data-model-sketch">10. Data model (sketch)</h2>
+<p><code>user</code> (email, encrypted Google token, needs_reconnect) · <code>watched_folder</code>
+(user, Drive folder id/name, change token, last synced) · <code>source_file</code>
+(user, Drive file id, path, name, mime, status, error) · <code>document</code> (file,
+doc_type, manager, as_of, currency, summary, tags[],
+model, prompt_version) · <code>fund</code> + <code>fund_alias</code> (per user) · <code>printed_table</code>
+(document, index, title, header JSON, rows JSON) · <code>common_row</code> (document,
+fund or account, entity_kind, measure, period_kind, period_end, value,
+share_class, value_as_written, unit, currency, benchmark_name,
+table_index/row/col,
+needs_review) · <code>chunk</code> (document, kind, text, tsvector, embedding vector) ·
+<code>job</code> (file, status, attempts, run_after, last_error).</p>
+<h2 id="11-testing">11. Testing</h2>
+<ul>
+<li><strong>Unit:</strong> value parsing, fund normalisation, scanned detection, CSV mapping,
+  sources-differ, sync decisions (fake source), job states, the Ask tool
+  builder and its user scoping. LLM calls replay recorded responses; unit
+  tests never hit the network.</li>
+<li><strong>Integration (v1 notes: "lean here with Docker"):</strong> pytest against a real
+  Postgres + pgvector container. Covers the pipeline end to end with recorded
+  LLM responses, API filters and isolation between two users.</li>
+<li><strong>Eval <span class="qref">Q16</span>:</strong> <code>make eval</code> runs the real provider over <code>fixtures/</code> and
+  scores against the <code>.truth.json</code> files, reporting precision and recall per
+  document and per measure. It also checks that the Harborline traps don't
+  leak into fund returns.</li>
+<li><strong>E2E:</strong> deferred (v1 notes: "if time permits").</li>
+</ul>
+<h2 id="12-security">12. Security</h2>
+<ul>
+<li>Read-only Drive scope. Allowlisted sign-in. Encrypted refresh tokens.
+  Per-user scoping on every query.</li>
+<li>Ask tools are GET-only and run as the user. The model never sees SQL or
+  other users' data.</li>
+<li>Document content is untrusted. HTML is shown in a sandboxed iframe with
+  scripts off.</li>
+<li>Documents go to OpenAI; the README says so.</li>
+</ul>
+<h2 id="13-claudes-calls-please-check">13. Claude's calls (please check)</h2>
+<ol>
+<li>No Redis/Celery: Postgres job table + worker entrypoint.</li>
+<li>Top-level folder only; 50-page cap. (<code>.xlsx</code> was excluded here; the user
+   brought it back in, Q25.)</li>
+<li>Changing the folder clears that user's data, after a confirmation.
+   (Re-extract is a manual button; edits in place are otherwise ignored, Q24.)</li>
+<li>Scanned threshold: more than half the pages under 20 characters of text.</li>
+<li>CSVs: LLM maps columns once and pandas applies the mapping.</li>
+<li><code>DocumentSource</code> interface kept for future Dropbox, Drive only built.</li>
+<li>CapRover layout: separate api, worker and web apps, plus a pgvector
+   Postgres app.</li>
+<li>Refresh tokens Fernet-encrypted; signed session cookie.</li>
+<li>Share class is an attribute of a fund, not a separate fund, but it is part
+   of each common row's identity: Alderbank A EUR (+3.12%) and I EUR (+3.21%)
+   are two series, never merged and never flagged as "sources differ"
+   (builder check).</li>
+<li>Default OpenAI model ids decided in the spike from current docs.</li>
+</ol>
+<h2 id="14-open">14. Open</h2>
+<ul>
+<li>Screen layout variant (§8), from the mockup.</li>
+<li>Anything the builder check raises that only the user can answer.</li>
+</ul></article>
+</div>

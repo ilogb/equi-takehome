@@ -359,3 +359,35 @@ image-only PDF, not a real file. Recommendation (vision) overruled.
 ## Next step
 A rendered UI mockup (per the user's global rule: mockup before spec), then
 the v2 spec, recording the chosen mockup variant.
+
+## Round 6 (Q23–Q25): raised by the user while reading the spec
+
+### Q23 — Store the original files?
+**User (verbatim).**
+> the other thing is with the spec review do we need to store the docs
+> locally? For mvp can't we keep the path, after we process everything we are
+> good shape and for now we do not assume updates to the same file
+> 7.4 Store and embed
+> Store the document, printed tables, common rows and metadata.
+**Outcome.** Claude agreed. Originals stay in Drive; the app keeps the file id
+and path, streams the file from Drive for the viewer, and downloads again to
+re-process. Derived data (text, embeddings, printed tables, common rows) is
+still stored. No revision tracking.
+
+### Q24 — Deletes and in-place edits, given "no updates"
+**Questions.** (a) With no updates to the same file assumed, what happens when
+a file is deleted or moved out of the folder? (b) And if a file is edited in
+place anyway?
+**Options.** (a) Hide its data (recommended) · Ignore for MVP. (b) Ignore,
+keep first result (recommended) · Re-extract automatically.
+**Answers.** (a) Ignore for MVP. (b) Ignore, keep first result (Recommended).
+**Outcome.** Deleted or moved files keep their data, and the viewer shows "No
+longer in Drive". Edits in place are ignored; a manual Re-extract button
+covers the rare case. Recommendation (a) overruled.
+
+### Q25 — `.xlsx`
+**User (verbatim).**
+> also this should be easy to support -> .xlsx no need to drop it for mvp
+**Outcome.** `.xlsx` is in the MVP. Each sheet is read with pandas and handled
+like a CSV, and each sheet is kept as a printed table. This reverses Claude's
+call in spec §13 #2.
