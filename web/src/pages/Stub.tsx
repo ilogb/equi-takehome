@@ -10,7 +10,6 @@ function Stub({ title, children }: { title: string; children?: React.ReactNode }
   )
 }
 
-export const LibraryPage = () => <Stub title="Library" />
 export const DataPage = () => <Stub title="Data" />
 export function DocumentPage() {
   const { id } = useParams()

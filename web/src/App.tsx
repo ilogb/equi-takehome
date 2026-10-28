@@ -2,7 +2,8 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AppHeader } from '@/components/AppHeader'
 import { ApiError, useMe } from '@/lib/api'
 import { Connect } from '@/routes/Connect'
-import { DataPage, DocumentPage, LibraryPage, SearchPage } from '@/pages/Stub'
+import { Library } from '@/routes/Library'
+import { DataPage, DocumentPage, SearchPage } from '@/pages/Stub'
 
 /** Shell for signed-in screens. A 401 from /api/auth/me sends the user to /connect. */
 export function RequireAuth() {
@@ -25,7 +26,7 @@ export default function App() {
     <Routes>
       <Route path="/connect" element={<Connect />} />
       <Route element={<RequireAuth />}>
-        <Route path="/library" element={<LibraryPage />} />
+        <Route path="/library" element={<Library />} />
         <Route path="/documents/:id" element={<DocumentPage />} />
         <Route path="/data" element={<DataPage />} />
         <Route path="/search" element={<SearchPage />} />
