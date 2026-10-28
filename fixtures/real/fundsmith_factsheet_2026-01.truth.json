@@ -1,0 +1,51 @@
+{
+  "file": "fundsmith_factsheet_2026-01.pdf",
+  "synthetic": false,
+  "partial": true,
+  "manager": "Fundsmith",
+  "doc_type": "factsheet",
+  "as_of_date": "2026-01-30",
+  "observations": [
+    {
+      "fund": "Fundsmith Equity Fund",
+      "share_class": "T Class EUR Acc",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-01-31",
+      "value": "-0.005",
+      "unit": "fraction",
+      "currency": "EUR",
+      "benchmark_name": null,
+      "where": "p1 'Performance, % Total Return', Jan 2026 column"
+    },
+    {
+      "fund": "Fundsmith Equity Fund",
+      "share_class": "T Class EUR Acc",
+      "metric": "benchmark_return",
+      "period_kind": "month",
+      "period_end": "2026-01-31",
+      "value": "0.009",
+      "unit": "fraction",
+      "currency": "EUR",
+      "benchmark_name": "MSCI World Index (EUR Net)",
+      "where": "p1, 'Equities 2' row"
+    },
+    {
+      "fund": "Fundsmith Equity Fund",
+      "share_class": "T Class EUR Acc",
+      "metric": "return",
+      "period_kind": "ytd",
+      "period_end": "2026-01-31",
+      "value": "-0.005",
+      "unit": "fraction",
+      "currency": "EUR",
+      "benchmark_name": null,
+      "where": "p1, '2026 to 30.01.26' column"
+    }
+  ],
+  "traps": [
+    "As-of is 30 Jan 2026 (last pricing day), not month end.",
+    "Comparator rows 'Equities' and 'EU Bonds' are not the fund; footnote says it has no benchmark.",
+    "'Best Month +10.9 (Oct'15)' and 'Average Month' are statistics, not period returns."
+  ]
+}

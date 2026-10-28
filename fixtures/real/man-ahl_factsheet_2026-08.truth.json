@@ -1,0 +1,123 @@
+{
+  "file": "man-ahl_factsheet_2026-08.pdf",
+  "synthetic": false,
+  "partial": true,
+  "manager": "Man Group",
+  "doc_type": "factsheet",
+  "as_of_date": "2026-08-28",
+  "observations": [
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-01-31",
+      "value": "0.0842",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "Historical Performance grid, 2026 row"
+    },
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-02-28",
+      "value": "0.0512",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "Historical Performance grid, 2026 row"
+    },
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-03-31",
+      "value": "-0.0375",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "Historical Performance grid, 2026 row"
+    },
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-04-30",
+      "value": "0.0216",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "Historical Performance grid, 2026 row"
+    },
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-05-31",
+      "value": "0.0079",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "Historical Performance grid, 2026 row"
+    },
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-06-30",
+      "value": "-0.0114",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "Historical Performance grid, 2026 row"
+    },
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-07-31",
+      "value": "0.0003",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "Historical Performance grid, 2026 row"
+    },
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-08-31",
+      "value": "0.0225",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "Historical Performance grid, 2026 row"
+    },
+    {
+      "fund": "Man AHL Diversified",
+      "share_class": "Class DN USD",
+      "metric": "return",
+      "period_kind": "ytd",
+      "period_end": "2026-08-31",
+      "value": "0.1421",
+      "unit": "fraction",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "2026 row, Fund YTD"
+    }
+  ],
+  "traps": [
+    "Grid covers 2016-2026: only 2026 is listed here (partial truth), earlier years are valid observations too.",
+    "Sep-Dec 2026 cells are 'n/a': no observations.",
+    "Report dated 28 August 2026."
+  ]
+}

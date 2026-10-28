@@ -32,6 +32,21 @@ so tests and grading always have something to run on.
 **User's reasoning.** "20+ is a bit too much for this take home." Whether the
 repo will be public was not answered.
 
-**Outcome.** The user picks a smaller subset of the real documents and gives
-Claude a path. Claude makes 1–2 synthetic CSVs and emails to cover the gaps
-(only one real CSV, no real emailed fund updates).
+**Follow-up answer (verbatim).**
+> alright take these documents heres -> /Users/ibrown/Desktop/EquiTakeHome and
+> the once you just created those syntehci ones in the repo
+>
+> and lets commit that
+>
+> no i nthis case I want the actual fils included these are public files and i
+> need to share my repo with folks at equi
+
+**User's reasoning.** "these are public files and i need to share my repo with
+folks at equi."
+
+**Outcome.** Claude's recommendation was **overruled**. The user chose 7 of the
+29 real documents (Fundsmith ×2, Man AHL, iShares SWDA, JPMorgan JPEF, UVic
+pension, TSP CSV), and they are committed in `fixtures/real/` with the
+manifest, next to 4 synthetic documents in `fixtures/synthetic/`. The repo is
+shared with Equi reviewers. Noted for the record: the Man AHL factsheet states
+it "may not be reproduced … without prior written consent".

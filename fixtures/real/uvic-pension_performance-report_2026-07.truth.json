@@ -1,0 +1,123 @@
+{
+  "file": "uvic-pension_performance-report_2026-07.pdf",
+  "synthetic": false,
+  "partial": true,
+  "manager": "University of Victoria Pension Plan",
+  "doc_type": "performance_report",
+  "as_of_date": "2026-07-31",
+  "observations": [
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-01-31",
+      "value": "-0.0021",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 2026 table, Monthly %"
+    },
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-02-28",
+      "value": "0.013",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 2026 table, Monthly %"
+    },
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-03-31",
+      "value": "-0.0283",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 2026 table, Monthly %"
+    },
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-04-30",
+      "value": "0.0259",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 2026 table, Monthly %"
+    },
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-05-31",
+      "value": "0.0201",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 2026 table, Monthly %"
+    },
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-06-30",
+      "value": "0.0104",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 2026 table, Monthly %"
+    },
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "month",
+      "period_end": "2026-07-31",
+      "value": "0.0051",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 2026 table, Monthly %"
+    },
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "ytd",
+      "period_end": "2026-07-31",
+      "value": "0.0439",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1, July YTD %"
+    },
+    {
+      "fund": "UVic Money Purchase Pension Plan Balanced Fund",
+      "share_class": null,
+      "metric": "return",
+      "period_kind": "1y",
+      "period_end": "2026-07-31",
+      "value": "0.0754",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1, July Rolling 1 Year"
+    }
+  ],
+  "traps": [
+    "Newest month first.",
+    "Page 2 is the 2025 table in the identical layout: its months must be dated 2025, not 2026.",
+    "Rolling 4 Year column has no period kind in the v0 schema; left out here."
+  ]
+}
