@@ -128,3 +128,57 @@ stored per table.
 and search) **and** turned into common rows (fund · period · measure · value)
 that power the cross-fund table and questions. Each common row links back to
 its cell in the printed table.
+
+> **Format change after Q4.** The user, verbatim: "ok this is too slow lets
+> keep it back in terminal and move faster with the questions and is this
+> using superpowers brainstorm usually claude or something gives me questions
+> and options and ability to move ot the next questino quickly". From Q5 on,
+> questions are multiple-choice rounds in the terminal (several per round);
+> the web page is retired. Recommended options were listed first and marked.
+
+## Round 1 (Q5–Q8)
+
+### Q5 — Stack
+**Question.** Stack: Python/FastAPI + Postgres with pgvector + React/Vite, all
+started with `docker compose up`. OK?
+**Options.** Take defaults (recommended) · SQLite, no Docker · Streamlit front end.
+**Answer.** Take defaults (Recommended).
+**Outcome.** FastAPI, SQLAlchemy 2, Postgres 16 + pgvector, React/TS/Vite,
+`docker compose up`.
+
+### Q6 — Embedding model
+**Question.** Which embedding model for vector search? (Claude has no
+embedding API.)
+**Options.** Local model (recommended) · Voyage AI · OpenAI embeddings · Skip
+vectors for MVP.
+**Answer (verbatim, typed as "Other").**
+> I think im going to put the backend on cap rover with my key and locally yes
+> they can put in their key so openAI is best on my side
+**Reasoning.** As stated: the backend will be deployed on CapRover using the
+user's own key; reviewers running locally supply their own key; so OpenAI.
+**Outcome.** OpenAI embeddings. **New requirement:** a CapRover deployment
+running on the user's key, plus local runs where reviewers bring their key.
+Recommendation (local model) overruled.
+
+### Q7 — Plain-English Q&A in the MVP?
+**Question.** Is plain-English Q&A ("Which fund had the best January
+return?") part of the MVP?
+**Options.** Yes, simple version (recommended) · Yes, full agent · After MVP.
+**Answer (verbatim, typed as "Other").**
+> I guess we use open ai for this and we will give it a list of apis and what
+> they do with swagger mainly, I believe in first having agent tools as "api"
+> then on the second version it's easy to set up an agent and give it tools
+**Reasoning.** As stated: build the capabilities as APIs first, described by
+the OpenAPI (Swagger) spec; turning them into agent tools in a second version
+is then easy.
+**Outcome.** Q&A is in the MVP and uses **OpenAI**. The LLM is given the app's
+own API endpoints (from the OpenAPI spec) as its tools. A full agent comes in
+v2. The exact v1 shape is asked in Round 2.
+
+### Q8 — Link each number to its source?
+**Question.** Should every extracted number link back to where it came from
+in the document?
+**Options.** Yes: page + quote (recommended) · Yes: document only · Not for MVP.
+**Answer.** Yes: document only.
+**Outcome.** Each number links to its source document, not to a page or
+quote. Recommendation (page + quote) overruled.
