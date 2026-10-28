@@ -5,6 +5,7 @@ The logic lives in pure functions (``build_rows``, ``find_conflicts``,
 wrappers around them.
 """
 
+import calendar
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -37,6 +38,12 @@ CONFLICT_TOLERANCE = Decimal("0.00005")
 MONTHLY_RETURN_LIMIT = Decimal("0.5")
 REASON_OUTLIER = "monthly return beyond ±50%"
 REASON_AFTER_AS_OF = "period end after as-of date"
+
+
+def _month_end(d: date) -> date:
+    """Periods are stored at calendar month-end while documents often date themselves on the
+    last business day, so anything in the as-of month counts as on or before it."""
+    return d.replace(day=calendar.monthrange(d.year, d.month)[1])
 CHUNK_TOKENS = 800
 TOKENS_PER_WORD = 1.3  # approximation: tokens ~= words x 1.3
 CHARS_PER_TOKEN = 4  # second estimate, for text with few spaces
@@ -80,7 +87,7 @@ def build_rows(ex: DocumentExtraction, as_of: date | None) -> list[RowDraft]:
             and abs(parsed.value) > MONTHLY_RETURN_LIMIT
         ):
             reason = REASON_OUTLIER
-        elif as_of is not None and period_end > as_of:
+        elif as_of is not None and period_end > _month_end(as_of):
             reason = REASON_AFTER_AS_OF
         drafts.append(
             RowDraft(

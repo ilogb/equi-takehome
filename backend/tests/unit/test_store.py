@@ -94,6 +94,16 @@ def test_period_end_after_as_of_flagged():
     assert d.needs_review and d.review_reason == "period end after as-of date"
 
 
+def test_month_end_period_in_the_as_of_month_not_flagged():
+    # Factsheets date themselves on the last business day (Fri 30 Jan) while returns are
+    # stored at calendar month-end (31 Jan): same month, so not "after" the as-of date.
+    ex = extraction("fundsmith_factsheet_2026-01.pdf").model_copy(
+        update={"rows": [row(period_end=date(2026, 1, 31))]}
+    )
+    (d,) = build_rows(ex, date(2026, 1, 30))
+    assert not d.needs_review
+
+
 def test_large_ytd_not_flagged():
     ex = extraction("fundsmith_factsheet_2026-01.pdf").model_copy(
         update={"rows": [row(period_kind=PeriodKind.ytd, value_as_written="62%")]}
