@@ -152,7 +152,8 @@ def file_content(
         yield first
         yield from chunks
 
-    headers = {}
-    if file.mime_type == "text/html":
+    headers = {"X-Content-Type-Options": "nosniff"}
+    if file.mime_type.split(";")[0].strip().lower() != "application/pdf":
+        # Anything but a PDF could carry active content (HTML, SVG, ...): no script, own origin.
         headers["Content-Security-Policy"] = "sandbox"
     return StreamingResponse(body(), media_type=file.mime_type, headers=headers)

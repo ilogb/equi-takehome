@@ -2,6 +2,7 @@
 
 import csv
 import io
+import re
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -12,6 +13,7 @@ from fastapi.responses import Response
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
+from app.api.serialize import dec_str
 from app.auth.deps import current_user
 from app.db import get_session
 from app.models import CommonRow, Document, SourceFile, User
@@ -57,7 +59,7 @@ def _filtered(user_id: int, f: RowFilters) -> Select:
         .where(CommonRow.user_id == user_id)
     )
     if f.fund:
-        stmt = stmt.where(CommonRow.fund_id == int(f.fund) if f.fund.isdigit() else CommonRow.entity.ilike(f"%{f.fund}%"))
+        stmt = stmt.where(CommonRow.fund_id == int(f.fund) if re.fullmatch(r"[0-9]+", f.fund) else CommonRow.entity.ilike(f"%{f.fund}%"))
     if f.manager:
         stmt = stmt.where(Document.manager.ilike(f"%{f.manager}%"))
     if f.entity_kind:
@@ -110,7 +112,7 @@ def row_json(r) -> dict:
         "measure": row.measure,
         "period_kind": row.period_kind,
         "period_end": row.period_end,
-        "value": str(row.value),
+        "value": dec_str(row.value),
         "value_as_written": row.value_as_written,
         "unit": row.unit,
         "currency": row.currency,
@@ -124,10 +126,6 @@ def row_json(r) -> dict:
     }
 
 
-def _plain(value: Decimal) -> str:
-    return format(value, "f")
-
-
 def rows_csv(rows: list[dict]) -> str:
     """CSV text: `value` is the raw stored decimal string, `value_percent` a display column
     (fractions x 100, only for return measures)."""
@@ -137,7 +135,7 @@ def rows_csv(rows: list[dict]) -> str:
     for r in rows:
         percent = ""
         if r["measure"] in _RETURN_MEASURES:
-            percent = _plain((Decimal(r["value"]) * 100).normalize()) + "%"
+            percent = dec_str(Decimal(r["value"]) * 100) + "%"
         cells = {**r, "value": r["value"], "value_percent": percent}
         writer.writerow(["" if cells.get(c) is None else cells[c] for c in CSV_COLUMNS])
     return out.getvalue()

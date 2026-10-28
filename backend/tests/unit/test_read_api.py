@@ -8,12 +8,13 @@ from sqlalchemy.dialects import postgresql
 from app.api import files as files_api
 from app.api.files import files_query
 from app.api.funds import funds_query
-from app.api.rows import MAX_LIMIT, RowFilters, rows_count_query, rows_csv, rows_query
+from app.api.rows import MAX_LIMIT, RowFilters, row_json, rows_count_query, rows_csv, rows_query
+from app.api.serialize import dec_str
 from app.auth.deps import current_user, user_source
 from app.config import Settings
 from app.db import get_session
 from app.main import create_app
-from app.models import SourceFile, User
+from app.models import CommonRow, SourceFile, User
 from app.sources.base import SourceError
 
 
@@ -148,6 +149,7 @@ def test_content_passes_content_type():
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/pdf"
     assert resp.content == b"%PDF-1.7"
+    assert resp.headers["x-content-type-options"] == "nosniff"
     assert "content-security-policy" not in resp.headers
 
 
@@ -219,3 +221,50 @@ def test_analyze_routes_have_operation_ids():
         "list_funds": "/api/funds",
         "describe_data": "/api/meta",
     }
+
+
+def test_dec_str_canonical():
+    cases = {
+        "0.0842000000": "0.0842", "0E-10": "0", "0.0000001000": "0.0000001",
+        "-0.0000000500": "-0.00000005", "612000000.0000000000": "612000000",
+        "1.000E-7": "0.0000001", "-0E-10": "0", "1E+3": "1000",
+    }  # fmt: skip
+    for raw, want in cases.items():
+        assert dec_str(Decimal(raw)) == want, raw
+    assert dec_str(None) is None
+
+
+def test_row_json_values_are_canonical():
+    def make(v):
+        cr = CommonRow(
+            id=1, document_id=2, entity="E", entity_kind="fund", measure="return", period_kind="month",
+            period_end=date(2026, 1, 31), value=Decimal(v), needs_review=False, conflict=False,
+        )  # fmt: skip
+        return row_json(SimpleNamespace(CommonRow=cr, manager="M", document_name="d.pdf"))["value"]
+
+    assert make("0.0842000000") == "0.0842"
+    assert make("0E-10") == "0"
+
+
+def test_csv_uses_canonical_strings():
+    line = rows_csv([row(value="0.0842")]).splitlines()[1].split(",")
+    assert line[7] == "0.0842" and line[8] == "8.42%"
+    assert rows_csv([row(value="0.0000001")]).splitlines()[1].split(",")[8] == "0.00001%"
+
+
+def test_fund_filter_non_ascii_digit_is_name_match():
+    text = sql(rows_query(1, RowFilters(fund="\u00b2")))
+    assert "fund_id =" not in text and "ILIKE" in text
+
+
+def test_content_security_headers():
+    for mime, sandboxed in [
+        ("image/svg+xml", True), ("text/html; charset=utf-8", True), ("TEXT/HTML", True),
+        ("application/pdf", False), ("Application/PDF; x=1", False),
+    ]:  # fmt: skip
+        c, _ = client(make_file(mime), FakeSource([b"x"]))
+        resp = c.get("/api/files/5/content")
+        assert resp.headers["x-content-type-options"] == "nosniff", mime
+        assert ("content-security-policy" in resp.headers) is sandboxed, mime
+        if sandboxed:
+            assert resp.headers["content-security-policy"] == "sandbox"
