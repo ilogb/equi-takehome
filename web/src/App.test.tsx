@@ -1,10 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import App from './App'
+import { QueryProvider } from './QueryProvider'
 import { server } from './test/server'
 
 function Where() {
@@ -13,14 +13,13 @@ function Where() {
 }
 
 function renderAt(path: string) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[path]}>
+    <MemoryRouter initialEntries={[path]}>
+      <QueryProvider retry={false}>
         <App />
         <Where />
-      </MemoryRouter>
-    </QueryClientProvider>,
+      </QueryProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -37,6 +36,14 @@ describe('route guard', () => {
     expect(await screen.findByRole('link', { name: 'Library' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Data' })).toBeInTheDocument()
     expect(await screen.findByRole('status')).toHaveTextContent('Synced')
+  })
+})
+
+describe('global 401 handling', () => {
+  it('redirects to /connect when a query returns 401 mid-session', async () => {
+    server.use(http.get('/api/folder', () => HttpResponse.json({ detail: 'expired' }, { status: 401 })))
+    renderAt('/data')
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/connect'))
   })
 })
 

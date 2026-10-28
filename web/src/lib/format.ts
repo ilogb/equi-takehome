@@ -43,12 +43,12 @@ export function formatPercent(value: string | null | undefined): string {
 /** "24963108.45","USD" -> "$24,963,108.45". Exact for any digit count. */
 export function formatMoney(value: string | null | undefined, currency: string | null | undefined): string {
   if (value == null || !parseDecimal(value)) return DASH
-  const negative = value.trim().startsWith('-')
   const abs = value.trim().replace(/^[+-]/, '')
   const options: Intl.NumberFormatOptions = currency
     ? { style: 'currency', currency }
     : { minimumFractionDigits: 2, maximumFractionDigits: 2 }
   // Intl accepts decimal strings and keeps their exact digits.
   const text = new Intl.NumberFormat('en-US', options).format(abs as unknown as number)
-  return negative && /[1-9]/.test(abs) ? MINUS + text : text
+  // The sign comes from the rounded output, so "-0.001" shows as $0.00, not -$0.00.
+  return value.trim().startsWith('-') && /[1-9]/.test(text) ? MINUS + text : text
 }

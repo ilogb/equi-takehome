@@ -176,19 +176,26 @@ export interface RowsPage {
   total: number
 }
 
-/** Search (Find mode). Shape of a hit follows the search endpoint (Task 13). */
+/** Mirrors backend/app/search/service.py SearchHit. Fund entries are {name, share_class} or a plain name. */
+export type HitFund = string | { name: string; share_class?: string | null }
 export interface SearchHit {
   document_id: number
   file_name: string
-  score?: number
-  snippet?: string | null
-  [key: string]: unknown
+  path: string
+  doc_type: string
+  manager: string | null
+  funds: HitFund[]
+  as_of_date: string | null
+  tags: string[]
+  snippet: string
+  score: number
 }
 export interface SearchResponse {
   hits: SearchHit[]
   similar_for_first: SearchHit[]
 }
 
+/** Provisional until the Analyze endpoint lands. */
 export interface AnalyzeTable {
   columns: string[]
   rows: (string | number | null)[][]

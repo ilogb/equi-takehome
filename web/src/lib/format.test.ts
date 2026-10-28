@@ -38,6 +38,10 @@ describe('formatMoney', () => {
   it('uses U+2212 for negatives', () => {
     expect(formatMoney('-1500', 'USD')).toBe('−$1,500.00')
   })
+  it('drops the sign when the value rounds to zero', () => {
+    expect(formatMoney('-0.001', 'USD')).toBe('$0.00')
+    expect(formatMoney('-0.004', null)).toBe('0.00')
+  })
   it('falls back to plain grouping without a currency', () => {
     expect(formatMoney('1234.5', null)).toBe('1,234.50')
   })
