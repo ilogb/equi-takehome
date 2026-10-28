@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 /** Placeholder bodies for screens built in later tasks; the shell and routing around them are real. */
 function Stub({ title, children }: { title: string; children?: React.ReactNode }) {
@@ -11,10 +11,6 @@ function Stub({ title, children }: { title: string; children?: React.ReactNode }
 }
 
 export const DataPage = () => <Stub title="Data" />
-export function DocumentPage() {
-  const { id } = useParams()
-  return <Stub title={`Document ${id}`} />
-}
 export function SearchPage() {
   const [params] = useSearchParams()
   const mode = params.get('mode') === 'analyze' ? 'analyze' : 'find'

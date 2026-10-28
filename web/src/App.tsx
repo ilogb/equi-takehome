@@ -3,7 +3,8 @@ import { AppHeader } from '@/components/AppHeader'
 import { ApiError, useMe } from '@/lib/api'
 import { Connect } from '@/routes/Connect'
 import { Library } from '@/routes/Library'
-import { DataPage, DocumentPage, SearchPage } from '@/pages/Stub'
+import { DocumentView } from '@/routes/DocumentView'
+import { DataPage, SearchPage } from '@/pages/Stub'
 
 /** Shell for signed-in screens. A 401 from /api/auth/me sends the user to /connect. */
 export function RequireAuth() {
@@ -27,7 +28,7 @@ export default function App() {
       <Route path="/connect" element={<Connect />} />
       <Route element={<RequireAuth />}>
         <Route path="/library" element={<Library />} />
-        <Route path="/documents/:id" element={<DocumentPage />} />
+        <Route path="/documents/:id" element={<DocumentView />} />
         <Route path="/data" element={<DataPage />} />
         <Route path="/search" element={<SearchPage />} />
       </Route>
