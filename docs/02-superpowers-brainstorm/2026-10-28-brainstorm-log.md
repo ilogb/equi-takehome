@@ -546,3 +546,14 @@ Smart · Search / Ask AI.
 **Outcome.** The modes are **Find** (was Simple) and **Analyze** (was Ask) in
 the UI, the mockup and the code (`/api/analyze`, tag `analyze`). Spec
 amendment A13.
+
+## Build start
+
+### Q38 — Execution method and testing depth
+**User (verbatim).**
+> I see ok, well start building sub agent, I rather you lean unit tests and
+> let me test the overall make up of the app then we write integration tests
+**Outcome.** Subagent-driven build. Unit tests only, with no DB, network or
+Docker; every integration test in the plan is deferred to
+`docs/03-implementation-plan/deferred-integration-tests.md` and written after
+the user has tried the app. The plan's "Testing approach" section records it.

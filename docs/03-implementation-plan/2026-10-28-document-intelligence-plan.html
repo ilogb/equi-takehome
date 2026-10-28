@@ -51,6 +51,7 @@ a { color: var(--accent); }
   <nav class="toc" aria-label="Contents"><div class="label">Contents</div><div class="toc">
 <ul>
 <li><a href="#global-constraints">Global Constraints</a></li>
+<li><a href="#testing-approach-for-this-build-user-decision-q38">Testing approach for this build (user decision, Q38)</a></li>
 <li><a href="#review-focus">Review Focus</a></li>
 <li><a href="#file-structure">File structure</a></li>
 <li><a href="#lanes-and-order">Lanes and order</a></li>
@@ -100,6 +101,33 @@ Document A, Data A): <code>docs/02-superpowers-brainstorm/2026-10-28-document-in
 <li>API on port <strong>8000</strong> (A12). Local redirect URI <code>http://localhost:8000/api/auth/google/callback</code>. The web dev server proxies <code>/api</code> to it.</li>
 <li>Every query is scoped by <code>user_id</code>, including Analyze tool calls.</li>
 <li>Unit tests never touch the network. LLM tests replay recorded responses.</li>
+</ul>
+<h2 id="testing-approach-for-this-build-user-decision-q38">Testing approach for this build (user decision, Q38)</h2>
+<blockquote class="callout">
+<p>"I rather you lean unit tests and let me test the overall make up of the
+app then we write integration tests"</p>
+</blockquote>
+<ul>
+<li><strong>Write now:</strong> the unit tests in each task that need no database, network
+  or Docker. That covers pure functions and classes: value parsing, routing,
+  scanned detection, HTML cleaning, the schema and provider (stubbed client),
+  tabular mapping, name normalisation, conflict and needs-review rules as pure
+  functions, sync decisions over a fake source with in-memory state, queue
+  backoff maths, tool building from an OpenAPI dict, eval matching, and the
+  web unit tests.</li>
+<li><strong>Defer:</strong> every test in this plan that needs Postgres, a testcontainer or
+  the running app. Don't write it now. List its name and assertions in
+  <code>docs/03-implementation-plan/deferred-integration-tests.md</code> under its task
+  number. These tests are written after the user has tried the app.</li>
+<li><strong>Shape code so the deferred tests stay easy:</strong> keep decision logic in pure
+  functions (for example <code>decide_change(change, known_ids, descendant_ids) -&gt;
+  Action</code>, <code>conflicts(rows) -&gt; set[ids]</code>, <code>backoff(attempts) -&gt; timedelta |
+  None</code>) and keep the database calls thin around them.</li>
+<li><strong>Review Focus items</strong> whose test is deferred are still the reviewer's job:
+  the reviewer checks the code path by reading it (for example, every query
+  filters by <code>user_id</code>).</li>
+<li><strong>Each task's verification</strong> is its unit tests, plus <code>uv run python -c
+  "import app.main"</code> (backend) or <code>npm --prefix web run build</code> (web).</li>
 </ul>
 <h2 id="review-focus">Review Focus</h2>
 <ol>

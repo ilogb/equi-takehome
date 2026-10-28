@@ -46,6 +46,32 @@ Document A, Data A): `docs/02-superpowers-brainstorm/2026-10-28-document-intelli
 - Every query is scoped by `user_id`, including Analyze tool calls.
 - Unit tests never touch the network. LLM tests replay recorded responses.
 
+## Testing approach for this build (user decision, Q38)
+
+> "I rather you lean unit tests and let me test the overall make up of the
+> app then we write integration tests"
+
+- **Write now:** the unit tests in each task that need no database, network
+  or Docker. That covers pure functions and classes: value parsing, routing,
+  scanned detection, HTML cleaning, the schema and provider (stubbed client),
+  tabular mapping, name normalisation, conflict and needs-review rules as pure
+  functions, sync decisions over a fake source with in-memory state, queue
+  backoff maths, tool building from an OpenAPI dict, eval matching, and the
+  web unit tests.
+- **Defer:** every test in this plan that needs Postgres, a testcontainer or
+  the running app. Don't write it now. List its name and assertions in
+  `docs/03-implementation-plan/deferred-integration-tests.md` under its task
+  number. These tests are written after the user has tried the app.
+- **Shape code so the deferred tests stay easy:** keep decision logic in pure
+  functions (for example `decide_change(change, known_ids, descendant_ids) ->
+  Action`, `conflicts(rows) -> set[ids]`, `backoff(attempts) -> timedelta |
+  None`) and keep the database calls thin around them.
+- **Review Focus items** whose test is deferred are still the reviewer's job:
+  the reviewer checks the code path by reading it (for example, every query
+  filters by `user_id`).
+- **Each task's verification** is its unit tests, plus `uv run python -c
+  "import app.main"` (backend) or `npm --prefix web run build` (web).
+
 ## Review Focus
 
 1. **A file dropped into a subfolder created after the folder was chosen** should be picked up on the next poll. Pinned by `test_poll_picks_up_file_in_new_subfolder` (Task 11).
