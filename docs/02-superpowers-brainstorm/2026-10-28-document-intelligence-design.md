@@ -7,7 +7,7 @@
 > checked. The blind v0 (`docs/00-only-claude-ai/`) is superseded wherever
 > they differ.
 >
-> **Status:** complete, awaiting the user's approval. Mockup:
+> **Status:** **approved by the user on 2026-10-28** ("I approve the spec"). Mockup:
 > `2026-10-28-document-intelligence-mockup.html` (variants chosen in Q27–Q29).
 
 ## 1. Intent

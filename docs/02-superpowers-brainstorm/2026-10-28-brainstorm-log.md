@@ -469,3 +469,15 @@ a shipped shadcn/ui app: real spacing, page headers, icons, empty states and
 factsheet-like documents. Content, states, numbers and the chosen variants
 (Search A, Document A, Data A) are unchanged. The plan waits for this pass and
 for spec approval.
+
+## Spec approval and next steps
+**User (verbatim).**
+> I approve the spec and you can plan now as well
+>
+> I'll review thte plan and when i give the go ahead you can run the spike
+>
+> yea ok spike first for the hard parts you are right
+**Outcome.** Spec v2 approved (tag `v2-spec-approved`). Order: a spike on the
+hard parts first (Google OAuth + Drive sync, table extraction with OpenAI),
+then the implementation plan in `docs/03-implementation-plan/`, informed by
+the spike's findings.
