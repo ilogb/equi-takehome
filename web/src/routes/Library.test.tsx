@@ -22,7 +22,7 @@ const file = (over: object = {}) => ({
   missing_in_drive: false,
   doc_type: 'Factsheet',
   manager: 'Fundsmith',
-  funds: ['Fundsmith Equity Fund'],
+  funds: [{ name: 'Fundsmith Equity Fund', share_class: null }],
   as_of_date: '2026-08-31',
   tags: ['global equity', 'quality growth'],
   row_count: 18,
@@ -76,6 +76,24 @@ const use = (files: object[], f = folder({ done: files.length })) =>
 afterEach(() => vi.useRealTimers())
 
 describe('L1 default', () => {
+  it('renders fund objects with share classes, including repeated names', async () => {
+    use([
+      file({
+        funds: [
+          { name: 'Alderbank Fund', share_class: 'A EUR Acc' },
+          { name: 'Alderbank Fund', share_class: 'I EUR Acc' },
+          'Legacy Plain Name',
+        ],
+      }),
+    ])
+    renderLibrary()
+    const row = (await screen.findByRole('link', { name: 'fundsmith_factsheet_2026-08.pdf' })).closest('tr')!
+    const r = within(row)
+    expect(r.getByText('Alderbank Fund (A EUR Acc)')).toBeInTheDocument()
+    expect(r.getByText('Alderbank Fund (I EUR Acc)')).toBeInTheDocument()
+    expect(r.getByText('Legacy Plain Name')).toBeInTheDocument()
+  })
+
   it('shows icon, path, type, manager, funds, as-of, tags, status and relative time', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW })
     use([

@@ -76,7 +76,7 @@ export interface FileRow {
   missing_in_drive: boolean
   doc_type: string | null
   manager: string | null
-  funds: string[]
+  funds: HitFund[]
   as_of_date: string | null
   tags: string[]
   row_count: number
@@ -114,8 +114,11 @@ export interface DataRow {
 export interface DocumentTable {
   index: number
   title: string | null
-  header: string[]
+  /** One entry per printed header row. */
+  header: string[][]
+  /** The first 200 body rows; `rows_total` is the full count. */
   rows: string[][]
+  rows_total: number
 }
 
 export interface DocumentFile {
@@ -146,7 +149,9 @@ export interface DocumentDetail {
   funds: HitFund[]
   file: DocumentFile
   tables: DocumentTable[]
+  /** At most 500 rows; `rows_total` is the full count (see /data?document_id=...). */
   rows: DataRow[]
+  rows_total: number
 }
 
 export interface Fund {
@@ -181,6 +186,7 @@ export interface RowsFilters {
   end?: string
   needs_review?: boolean
   conflict?: boolean
+  document_id?: number
   sort?: 'value' | 'period_end' | 'entity'
   order?: 'asc' | 'desc'
   limit?: number
@@ -194,6 +200,13 @@ export interface RowsPage {
 
 /** Mirrors backend/app/search/service.py SearchHit. Fund entries are {name, share_class} or a plain name. */
 export type HitFund = string | { name: string; share_class?: string | null }
+
+/** A fund entry's name, whichever shape it arrived in. */
+export const fundName = (f: HitFund): string => (typeof f === 'string' ? f : f.name)
+
+/** "Name (share class)" when a share class is known, else the name. */
+export const fundLabel = (f: HitFund): string =>
+  typeof f !== 'string' && f.share_class ? `${f.name} (${f.share_class})` : fundName(f)
 export interface SearchHit {
   document_id: number
   file_name: string

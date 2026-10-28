@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { act } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QueryProvider } from '@/QueryProvider'
@@ -46,7 +46,7 @@ const row = (over: object = {}) => ({
   ...over,
 })
 
-const doc = (over: object = {}) => ({
+const doc = (over: Record<string, unknown> = {}) => withTotal({
   id: 5,
   source_file_id: 9,
   name: 'man-ahl_factsheet_2026-08.pdf',
@@ -59,11 +59,11 @@ const doc = (over: object = {}) => ({
   currency: 'USD',
   summary: null,
   tags: ['managed futures'],
-  funds: ['Man AHL Diversified'],
+  funds: [{ name: 'Man AHL Diversified', share_class: null }],
   file: fileRow(),
   tables: [
-    { index: 0, title: 'Historical Performance', header: ['Year', 'Jan'], rows: [['2026', '8.42%']] },
-    { index: 1, title: 'Cumulative Performance', header: ['Period', 'Return'], rows: [['1y', '9.10%']] },
+    { index: 0, title: 'Historical Performance', header: [['Year', 'Jan']], rows: [['2026', '8.42%']], rows_total: 1 },
+    { index: 1, title: 'Cumulative Performance', header: [['Period', 'Return']], rows: [['1y', '9.10%']], rows_total: 1 },
   ],
   rows: [
     row(),
@@ -73,6 +73,11 @@ const doc = (over: object = {}) => ({
   ],
   ...over,
 })
+
+/** The backend always sends rows_total; default it to the rows in the fixture. */
+function withTotal<T extends { rows: unknown[]; rows_total?: number }>(d: T) {
+  return { ...d, rows_total: d.rows_total ?? d.rows.length }
+}
 
 function fileRow(over: object = {}) {
   return {
@@ -96,6 +101,11 @@ function use(d: object, f: object = {}, content?: () => Response) {
   )
 }
 
+function DataPage() {
+  const l = useLocation()
+  return <div data-testid="data-url">{l.pathname + l.search}</div>
+}
+
 function renderView(start = '/documents/5') {
   return render(
     <MemoryRouter initialEntries={[start]}>
@@ -103,6 +113,7 @@ function renderView(start = '/documents/5') {
         <Routes>
           <Route path="/documents/:id" element={<DocumentView />} />
           <Route path="/library" element={<div>library page</div>} />
+          <Route path="/data" element={<DataPage />} />
         </Routes>
       </QueryProvider>
     </MemoryRouter>,
@@ -194,7 +205,7 @@ describe('D4 statement', () => {
     use(
       doc({
         doc_type: 'Statement',
-        tables: [{ index: 0, title: 'Holdings', header: ['Holding', 'Gain'], rows: [['Man AHL', '4.1%']] }],
+        tables: [{ index: 0, title: 'Holdings', header: [['Holding', 'Gain']], rows: [['Man AHL', '4.1%']], rows_total: 1 }],
         rows: [row({ measure: 'account_value', period_kind: 'other', value: '1000.5', value_as_written: '1,000.50' })],
       }),
     )
@@ -330,5 +341,48 @@ describe('review fixes', () => {
     const settled = gets
     await act(async () => { await vi.advanceTimersByTimeAsync(10000) })
     expect(gets).toBe(settled)
+  })
+})
+
+describe('large documents', () => {
+  it('caps printed tables and common rows with a link to all rows in Data', async () => {
+    const user = userEvent.setup()
+    use(
+      doc({
+        funds: [{ name: 'TSP', share_class: 'G Fund' }],
+        tables: [
+          {
+            index: 0,
+            title: 'Share prices',
+            header: [['Date', 'G Fund'], ['', 'USD']],
+            rows: Array.from({ length: 200 }, (_, i) => [`d${i}`, '13.20']),
+            rows_total: 5846,
+          },
+        ],
+        rows_total: 5846,
+      }),
+    )
+    renderView()
+    expect(await screen.findByText('TSP (G Fund)')).toBeInTheDocument()
+    const thead = screen.getByRole('columnheader', { name: 'Date' }).closest('thead')!
+    expect(within(thead).getAllByRole('row')).toHaveLength(2)
+    expect(within(thead).getByRole('columnheader', { name: 'USD' })).toBeInTheDocument()
+    expect(screen.getByText('Showing first 200 of 5,846 rows.')).toBeInTheDocument()
+    const tab = screen.getByRole('tab', { name: /common rows/i })
+    expect(tab).toHaveTextContent('5,846')
+    await user.click(tab)
+    expect(screen.getByText(/Showing 4 of 5,846/)).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: /see all in data/i }))
+    expect(screen.getByTestId('data-url')).toHaveTextContent('/data?document_id=5')
+  })
+
+  it('shows no cap notes when everything fits', async () => {
+    const user = userEvent.setup()
+    use(doc())
+    renderView()
+    await screen.findByRole('heading', { name: /man-ahl/ })
+    expect(screen.queryByText(/showing first/i)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /common rows/i }))
+    expect(screen.queryByRole('link', { name: /see all in data/i })).not.toBeInTheDocument()
   })
 })

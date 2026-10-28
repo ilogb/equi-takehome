@@ -279,3 +279,28 @@ describe('T2 empty after filtering', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not load/i)
   })
 })
+
+describe('document filter', () => {
+  it('passes a valid document_id to the API and the CSV link, and can be cleared', async () => {
+    const user = userEvent.setup()
+    const seen = useRows()
+    renderData('/data?document_id=11')
+    await screen.findByText('Man AHL Diversified')
+    expect(lastQ(seen).get('document_id')).toBe('11')
+    const csv = new URL(screen.getByRole('link', { name: /export csv/i }).getAttribute('href')!, 'http://x')
+    expect(csv.searchParams.get('document_id')).toBe('11')
+    const chip = screen.getByRole('switch', { name: /document/i })
+    expect(chip).toHaveTextContent('man-ahl_factsheet.pdf')
+    await user.click(chip)
+    await waitFor(() => expect(url()).toBe('/data'))
+    await waitFor(() => expect(lastQ(seen).get('document_id')).toBeNull())
+  })
+
+  it.each(['abc', '0', '-3', '1.5', ''])('drops an invalid document_id %j', async (bad) => {
+    const seen = useRows()
+    renderData(`/data?document_id=${bad}`)
+    await screen.findByText('Man AHL Diversified')
+    expect(lastQ(seen).get('document_id')).toBeNull()
+    expect(screen.queryByRole('switch', { name: /document/i })).toBeNull()
+  })
+})

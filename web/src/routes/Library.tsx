@@ -7,7 +7,7 @@ import { FileTypeIcon } from '@/components/FileTypeIcon'
 import { FILE_STATUSES, StatusBadge, type FileStatus } from '@/components/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { api, ApiError, folderQuery, keys, urls, useSyncNow, type FileRow } from '@/lib/api'
+import { api, ApiError, folderQuery, fundLabel, keys, urls, useSyncNow, type FileRow } from '@/lib/api'
 import { relativeTime } from '@/components/SyncPill'
 import { cn } from '@/lib/utils'
 
@@ -75,8 +75,8 @@ function FileRowView({ f, onOpen }: { f: FileRow; onOpen: (() => void) | null })
       <td className="px-3 py-2.5">{f.doc_type}</td>
       <td className="px-3 py-2.5">{f.manager}</td>
       <td className="px-3 py-2.5">
-        {f.funds.map((fund) => (
-          <div key={fund}>{fund}</div>
+        {f.funds.map((fund, i) => (
+          <div key={i}>{fundLabel(fund)}</div>
         ))}
       </td>
       <td className="px-3 py-2.5 tabular-nums">{f.as_of_date}</td>

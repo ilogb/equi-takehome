@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { api, keys, type DataRow, type HitFund, type DocumentDetail, type DocumentTable } from '@/lib/api'
+import { api, fundLabel, keys, type DataRow, type DocumentDetail, type DocumentTable } from '@/lib/api'
 import { formatMoney, formatPercent } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -75,13 +75,15 @@ function PrintedTables({
       <div className="overflow-auto rounded-lg border">
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b bg-muted/50 text-left">
-              {t.header.map((h, i) => (
-                <th key={i} scope="col" className="whitespace-nowrap px-2 py-1.5 font-medium">
-                  {h}
-                </th>
-              ))}
-            </tr>
+            {t.header.map((hr, i) => (
+              <tr key={i} className="border-b bg-muted/50 text-left">
+                {hr.map((h, j) => (
+                  <th key={j} scope="col" className="whitespace-nowrap px-2 py-1.5 font-medium">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            ))}
           </thead>
           <tbody>
             {t.rows.map((r, i) => (
@@ -96,11 +98,26 @@ function PrintedTables({
           </tbody>
         </table>
       </div>
+      {t.rows_total > t.rows.length && (
+        <p className="text-xs text-muted-foreground">
+          Showing first {t.rows.length.toLocaleString('en-US')} of {t.rows_total.toLocaleString('en-US')} rows.
+        </p>
+      )}
     </div>
   )
 }
 
-function CommonRows({ rows, statement }: { rows: DataRow[]; statement: boolean }) {
+function CommonRows({
+  rows,
+  total,
+  documentId,
+  statement,
+}: {
+  rows: DataRow[]
+  total: number
+  documentId: number
+  statement: boolean
+}) {
   const anyReview = rows.some((r) => r.needs_review)
   const anyDiff = rows.some((r) => r.conflict)
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">No common rows were extracted from this file.</p>
@@ -160,6 +177,14 @@ function CommonRows({ rows, statement }: { rows: DataRow[]; statement: boolean }
           </tbody>
         </table>
       </div>
+      {total > rows.length && (
+        <p className="text-xs text-muted-foreground">
+          Showing {rows.length.toLocaleString('en-US')} of {total.toLocaleString('en-US')} —{' '}
+          <Link to={`/data?document_id=${documentId}`} className="text-primary hover:underline">
+            see all in Data
+          </Link>
+        </p>
+      )}
     </div>
   )
 }
@@ -175,10 +200,6 @@ function Meta({ label, value }: { label: string; value: string | null | undefine
 
 const PENDING = new Set(['queued', 'processing'])
 const POLL_MS = 3_000
-
-function fundName(f: HitFund): string {
-  return typeof f === 'string' ? f : f.name
-}
 
 /** Keyed on the route id so per-document state (like "gone from Drive") never leaks across documents. */
 export function DocumentView() {
@@ -273,8 +294,8 @@ function DocumentBody({ id }: { id: number }) {
         </dl>
         {d.funds.length > 0 && (
           <ul className="flex flex-wrap gap-x-4 text-sm">
-            {d.funds.map((f) => (
-              <li key={fundName(f)}>{fundName(f)}</li>
+            {d.funds.map((f, i) => (
+              <li key={i}>{fundLabel(f)}</li>
             ))}
           </ul>
         )}
@@ -334,14 +355,14 @@ function DocumentBody({ id }: { id: number }) {
               As printed <span className="text-xs tabular-nums text-muted-foreground">{d.tables.length}</span>
             </TabsTrigger>
             <TabsTrigger value="rows">
-              Common rows <span className="text-xs tabular-nums text-muted-foreground">{d.rows.length}</span>
+              Common rows <span className="text-xs tabular-nums text-muted-foreground">{d.rows_total.toLocaleString('en-US')}</span>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="printed">
             <PrintedTables tables={d.tables} statement={statement} picked={picked} setPicked={setPicked} />
           </TabsContent>
           <TabsContent value="rows">
-            <CommonRows rows={d.rows} statement={statement} />
+            <CommonRows rows={d.rows} total={d.rows_total} documentId={d.id} statement={statement} />
           </TabsContent>
         </Tabs>
       </div>

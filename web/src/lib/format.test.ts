@@ -45,4 +45,8 @@ describe('formatMoney', () => {
   it('falls back to plain grouping without a currency', () => {
     expect(formatMoney('1234.5', null)).toBe('1,234.50')
   })
+  it('shows a plain number and the raw currency text when Intl rejects the code', () => {
+    expect(formatMoney('1234.5', 'US$')).toBe('1,234.50 US$')
+    expect(formatMoney('-1500', 'points')).toBe('−1,500.00 points')
+  })
 })

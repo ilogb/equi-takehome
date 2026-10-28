@@ -1,5 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AppHeader } from '@/components/AppHeader'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ApiError, useMe } from '@/lib/api'
 import { Connect } from '@/routes/Connect'
 import { Library } from '@/routes/Library'
@@ -25,15 +26,17 @@ export function RequireAuth() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/connect" element={<Connect />} />
-      <Route element={<RequireAuth />}>
-        <Route path="/library" element={<Library />} />
-        <Route path="/documents/:id" element={<DocumentView />} />
-        <Route path="/data" element={<DataTable />} />
-        <Route path="/search" element={<SearchResults />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/library" replace />} />
-    </Routes>
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/connect" element={<Connect />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/library" element={<Library />} />
+          <Route path="/documents/:id" element={<DocumentView />} />
+          <Route path="/data" element={<DataTable />} />
+          <Route path="/search" element={<SearchResults />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/library" replace />} />
+      </Routes>
+    </ErrorBoundary>
   )
 }

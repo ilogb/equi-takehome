@@ -3,7 +3,7 @@ import { SearchX, Tag } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Skeleton } from '@/components/ui/skeleton'
-import { api, keys, useAnalyzeAnswer, useFindSearch, type AnalyzeResponse, type HitFund, type SearchHit } from '@/lib/api'
+import { api, fundName, keys, useAnalyzeAnswer, useFindSearch, type AnalyzeResponse, type SearchHit } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const NUMERIC = /^[+\-−(]?[$£€]?\d[\d,]*(\.\d+)?\s?(%|[kKmMbB]n?)?\)?$/
@@ -28,7 +28,6 @@ function Highlight({ text, query }: { text: string; query: string }): ReactNode 
   )
 }
 
-const fundName = (f: HitFund) => (typeof f === 'string' ? f : f.name)
 
 function HitMeta({ hit }: { hit: SearchHit }) {
   const parts = [hit.doc_type, hit.manager, hit.as_of_date ? `as of ${hit.as_of_date}` : null].filter(Boolean)

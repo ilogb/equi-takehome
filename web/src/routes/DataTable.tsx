@@ -30,7 +30,9 @@ const MEASURE_LABEL: Record<Measure, string> = {
 }
 const SORTS = ['value', 'period_end', 'entity'] as const
 type Sort = (typeof SORTS)[number]
-const FILTER_KEYS = ['fund', 'manager', 'measure', 'period_kind', 'start', 'end', 'needs_review', 'conflict'] as const
+const FILTER_KEYS = [
+  'fund', 'manager', 'measure', 'period_kind', 'start', 'end', 'needs_review', 'conflict', 'document_id',
+] as const
 
 const isDate = (v: string | null): v is string => v != null && /^\d{4}-\d{2}-\d{2}$/.test(v)
 
@@ -43,6 +45,7 @@ function parseFilters(p: URLSearchParams): Required<Pick<RowsFilters, 'sort' | '
   const offset = Number(p.get('offset'))
   const start = p.get('start')
   const end = p.get('end')
+  const documentId = p.get('document_id')
   return {
     fund: p.get('fund') || undefined,
     manager: p.get('manager') || undefined,
@@ -52,6 +55,7 @@ function parseFilters(p: URLSearchParams): Required<Pick<RowsFilters, 'sort' | '
     end: isDate(end) ? end : undefined,
     needs_review: p.get('needs_review') === 'true' ? true : undefined,
     conflict: p.get('conflict') === 'true' ? true : undefined,
+    document_id: documentId && /^[1-9]\d{0,15}$/.test(documentId) ? Number(documentId) : undefined,
     sort,
     order: p.get('order') === 'asc' ? 'asc' : 'desc',
     limit: Number.isInteger(limit) && limit >= 1 ? Math.min(limit, MAX_LIMIT) : DEFAULT_LIMIT,
@@ -339,6 +343,18 @@ export function DataTable() {
           checked={f.conflict === true}
           onChange={(v) => patch({ conflict: v ? 'true' : undefined })}
         />
+        {f.document_id !== undefined && (
+          <Toggle
+            label={
+              <>
+                Document <span className="max-w-56 truncate font-semibold">{data[0]?.document_name ?? `#${f.document_id}`}</span>
+                <span aria-hidden>×</span>
+              </>
+            }
+            checked
+            onChange={() => patch({ document_id: undefined })}
+          />
+        )}
       </div>
 
       {rows.isError && (

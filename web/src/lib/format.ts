@@ -47,8 +47,16 @@ export function formatMoney(value: string | null | undefined, currency: string |
   const options: Intl.NumberFormatOptions = currency
     ? { style: 'currency', currency }
     : { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-  // Intl accepts decimal strings and keeps their exact digits.
-  const text = new Intl.NumberFormat('en-US', options).format(abs as unknown as number)
+  let text: string
+  try {
+    // Intl accepts decimal strings and keeps their exact digits.
+    text = new Intl.NumberFormat('en-US', options).format(abs as unknown as number)
+  } catch {
+    // An unknown currency code (e.g. "US$" or "points") throws a RangeError: show the
+    // plain number followed by the currency text as written.
+    const plain = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    text = `${plain.format(abs as unknown as number)} ${currency}`
+  }
   // The sign comes from the rounded output, so "-0.001" shows as $0.00, not -$0.00.
   return value.trim().startsWith('-') && /[1-9]/.test(text) ? MINUS + text : text
 }
