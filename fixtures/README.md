@@ -3,7 +3,7 @@
 | Folder | What | Count |
 |---|---|---|
 | `real/` | Public documents from real managers, chosen by the user from a 29-file recon set. Committed so the repo runs as-is for reviewers. | 7 |
-| `synthetic/` | Fictional managers, built by `generate.py` to cover what the real set lacks (return CSVs, emailed updates). | 4 |
+| `synthetic/` | Fictional managers, built by `generate.py` to cover what the real set lacks: return CSVs, emailed updates, and an account statement (Equi: statements get mixed in with factsheets). | 5 |
 
 `real/manifest.csv` records each file's source URL, landing page, retrieval
 date, sha256 and notes, including any terms-of-use wording the source states.
@@ -28,6 +28,8 @@ the PDF text, not every number in the file.
 | Alderbank Asia Income (A USD Dist) | −0.45% | synthetic |
 | Fundsmith Equity (T EUR Acc) | −0.50% | real |
 | Larchmont Quay Multi-Strategy | −0.60% | synthetic |
+
+The Harborline custody statement reports an *account* return (Sep 2026 +1.62%, YTD +7.84%), not a fund return, and holds Man AHL and Fundsmith positions whose "Unrealized G/L %" must not be read as fund returns.
 
 The iShares SWDA, JPMorgan JPEF and Fundsmith August files have no January
 2026 monthly figure; the TSP CSV holds daily prices, from which a January

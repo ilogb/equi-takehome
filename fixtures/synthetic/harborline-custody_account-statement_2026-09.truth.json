@@ -1,0 +1,64 @@
+{
+  "file": "harborline-custody_account-statement_2026-09.pdf",
+  "synthetic": true,
+  "manager": "Harborline Custody Services",
+  "doc_type": "statement",
+  "as_of_date": "2026-09-30",
+  "observations": [
+    {
+      "fund": "Calder Family Office LLC (HC-4471-0093)",
+      "share_class": null,
+      "metric": "account_value",
+      "period_kind": "other",
+      "period_end": "2026-08-31",
+      "value": "24318442.17",
+      "unit": "currency",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "p1 Account Summary, Beginning Account Value"
+    },
+    {
+      "fund": "Calder Family Office LLC (HC-4471-0093)",
+      "share_class": null,
+      "metric": "account_value",
+      "period_kind": "other",
+      "period_end": "2026-09-30",
+      "value": "24963108.45",
+      "unit": "currency",
+      "currency": "USD",
+      "benchmark_name": null,
+      "where": "p1 Account Summary, Ending Account Value"
+    },
+    {
+      "fund": "Calder Family Office LLC (HC-4471-0093)",
+      "share_class": null,
+      "metric": "account_return",
+      "period_kind": "month",
+      "period_end": "2026-09-30",
+      "value": "0.0162",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 Account Performance, September 2026"
+    },
+    {
+      "fund": "Calder Family Office LLC (HC-4471-0093)",
+      "share_class": null,
+      "metric": "account_return",
+      "period_kind": "ytd",
+      "period_end": "2026-09-30",
+      "value": "0.0784",
+      "unit": "fraction",
+      "currency": null,
+      "benchmark_name": null,
+      "where": "p1 Account Performance, Year to Date"
+    }
+  ],
+  "traps": [
+    "A statement, not a factsheet: the 1.62% and 7.84% are the ACCOUNT's returns, not any fund's.",
+    "Holdings include Man AHL Diversified and Fundsmith Equity: their 'Unrealized G/L %' (+21.7%, +12.4%) are gains from cost, not fund returns, and must not appear as fund returns.",
+    "Market values per holding are positions, not fund AUM.",
+    "Negatives in parentheses: withdrawals and fees.",
+    "Beginning value is dated Aug 31, ending value Sep 30."
+  ]
+}

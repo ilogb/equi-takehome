@@ -5,9 +5,10 @@ gaps in the real corpus: only one real CSV (prices, not returns) and no real
 emailed fund updates. Each document has deliberate traps, listed in its
 `.truth.json` under "traps".
 
-Deterministic: rerunning rewrites byte-identical files.
+Deterministic: rerunning rewrites byte-identical files. The PDF statement
+needs ReportLab, run in invariant mode:
 
-    python3 fixtures/synthetic/generate.py
+    uv run --with reportlab==4.2.5 python fixtures/synthetic/generate.py
 """
 
 from __future__ import annotations
@@ -355,9 +356,127 @@ Content-Transfer-Encoding: 8bit
     ])
 
 
+# --------------------------------------------------------------------------
+# 5. Custodian account statement (PDF): account-level numbers that must not be
+#    mistaken for fund returns, and fund holdings whose figures are not returns.
+# --------------------------------------------------------------------------
+
+def money(d: Decimal) -> str:
+    """Decimal -> '$1,234.56' or '($1,234.56)'."""
+    text = f"${abs(d):,.2f}"
+    return f"({text})" if d < 0 else text
+
+
+def harborline_statement_pdf() -> None:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    name = "harborline-custody_account-statement_2026-09.pdf"
+    account = "Calder Family Office LLC"
+    account_no = "HC-4471-0093"
+    begin = Decimal("24318442.17")
+    additions = Decimal("500000.00")
+    withdrawals = Decimal("-250000.00")
+    fees = Decimal("-18240.55")
+    change = Decimal("412906.83")
+    end = begin + additions + withdrawals + fees + change
+    twr_month, twr_ytd = Decimal("1.62"), Decimal("7.84")
+
+    # Holdings: (description, units, price, market value, unrealized gain %).
+    # Two of these are funds that also appear in the factsheets; their
+    # unrealized gain is not a fund return.
+    holdings = [
+        ("Man AHL Diversified plc, Class DN USD", "18,402.115", "$312.44", Decimal("5749556.81"), "+21.7%"),
+        ("Fundsmith SICAV Equity Fund, T EUR Acc", "61,210.000", "$71.38", Decimal("4369169.80"), "+12.4%"),
+        ("US Treasury Bill 0% 18-Dec-2026", "6,000,000", "$99.12", Decimal("5947200.00"), "n/a"),
+        ("Vanguard Total Stock Market Index Adm", "41,880.502", "$166.07", Decimal("6955095.97"), "+38.9%"),
+    ]
+    cash = end - sum(h[3] for h in holdings)
+
+    styles = getSampleStyleSheet()
+    small = styles["BodyText"].clone("small", fontSize=8, leading=10, textColor=colors.HexColor("#555555"))
+    grid = TableStyle([
+        ("FONT", (0, 0), (-1, -1), "Helvetica", 9),
+        ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 9),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.6, colors.HexColor("#1d3b5a")),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.25, colors.HexColor("#cccccc")),
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+    ])
+
+    story = [
+        Paragraph("Harborline Custody Services", styles["Title"]),
+        Paragraph("Account Statement &middot; September 1, 2026 &ndash; September 30, 2026", styles["Heading3"]),
+        Paragraph(f"{account} &middot; Account {account_no} &middot; Base currency USD", styles["BodyText"]),
+        Spacer(1, 0.2 * inch),
+        Paragraph("Account Summary", styles["Heading2"]),
+        Table([
+            ["", "This Period"],
+            ["Beginning Account Value (Aug 31, 2026)", money(begin)],
+            ["Contributions", money(additions)],
+            ["Withdrawals", money(withdrawals)],
+            ["Fees & Charges", money(fees)],
+            ["Change in Investment Value", money(change)],
+            ["Ending Account Value (Sep 30, 2026)", money(end)],
+        ], colWidths=[3.6 * inch, 1.8 * inch], style=grid),
+        Spacer(1, 0.2 * inch),
+        Paragraph("Account Performance (time-weighted, net of fees)", styles["Heading2"]),
+        Table([
+            ["", "September 2026", "Year to Date"],
+            ["Account", f"{twr_month}%", f"{twr_ytd}%"],
+        ], colWidths=[2.4 * inch, 1.5 * inch, 1.5 * inch], style=grid),
+        Spacer(1, 0.3 * inch),
+        Paragraph("Synthetic test data. Harborline Custody Services and Calder Family Office LLC "
+                  "are fictional. Performance shown is for the account, not for any fund held.", small),
+        PageBreak(),
+        Paragraph("Holdings as of September 30, 2026", styles["Heading2"]),
+        Table([["Description", "Units", "Price", "Market Value", "Unrealized G/L %"]]
+              + [[d, u, p, money(mv), g] for d, u, p, mv, g in holdings]
+              + [["Cash & Sweep", "", "", money(cash), ""], ["Total", "", "", money(end), ""]],
+              colWidths=[2.9 * inch, 0.95 * inch, 0.75 * inch, 1.15 * inch, 1.05 * inch], style=grid),
+        Spacer(1, 0.15 * inch),
+        Paragraph("Unrealized G/L % is measured from your average cost and is not a performance "
+                  "figure for the security.", small),
+        PageBreak(),
+        Paragraph("Account Activity", styles["Heading2"]),
+        Table([
+            ["Date", "Description", "Amount"],
+            ["09/03/2026", "Contribution - Wire In", money(additions)],
+            ["09/15/2026", "Dividend - Vanguard Total Stock Market Index Adm", money(Decimal("21877.40"))],
+            ["09/22/2026", "Withdrawal - Wire Out", money(withdrawals)],
+            ["09/30/2026", "Custody Fee - Q3 2026", money(fees)],
+        ], colWidths=[0.95 * inch, 3.6 * inch, 1.35 * inch], style=grid),
+    ]
+    SimpleDocTemplate(str(OUT / name), pagesize=LETTER, invariant=1,
+                      title="Harborline Custody - Account Statement", author="Harborline Custody Services",
+                      creator="fixtures/synthetic/generate.py").build(story)
+
+    holder = f"{account} ({account_no})"
+    write_truth(name, "Harborline Custody Services", "2026-09-30", "statement", [
+        obs(holder, "account_value", "other", "2026-08-31", begin, unit="currency", currency="USD",
+            where="p1 Account Summary, Beginning Account Value"),
+        obs(holder, "account_value", "other", "2026-09-30", end, unit="currency", currency="USD",
+            where="p1 Account Summary, Ending Account Value"),
+        obs(holder, "account_return", "month", "2026-09-30", frac(str(twr_month)),
+            where="p1 Account Performance, September 2026"),
+        obs(holder, "account_return", "ytd", "2026-09-30", frac(str(twr_ytd)),
+            where="p1 Account Performance, Year to Date"),
+    ], [
+        "A statement, not a factsheet: the 1.62% and 7.84% are the ACCOUNT's returns, not any fund's.",
+        "Holdings include Man AHL Diversified and Fundsmith Equity: their 'Unrealized G/L %' (+21.7%, +12.4%) "
+        "are gains from cost, not fund returns, and must not appear as fund returns.",
+        "Market values per holding are positions, not fund AUM.",
+        "Negatives in parentheses: withdrawals and fees.",
+        "Beginning value is dated Aug 31, ending value Sep 30.",
+    ])
+
+
 if __name__ == "__main__":
     northwind_csv()
     alderbank_csv()
     kestrel_eml()
     larchmont_eml()
+    harborline_statement_pdf()
     print("wrote", ", ".join(sorted(p.name for p in OUT.iterdir() if p.name != "generate.py")))
