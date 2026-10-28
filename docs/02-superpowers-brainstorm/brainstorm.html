@@ -1,0 +1,262 @@
+<title>Equi Brainstorm Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+/* Layout: a question rail on the left, one working sheet on the right; stacks on phones. */
+:root {
+  --bg: #f4f6f8; --sheet: #ffffff; --ink: #18212b; --muted: #5b6876; --line: #dde3e9;
+  --accent: #1d5f8a; --accent-soft: #e4eef6; --pos: #1f7a4d; --neg: #b3261e; --rec: #fff6dc; --rec-line: #e6c86a;
+  --display: "Source Serif 4", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161c; --sheet: #182029; --ink: #e5ebf1; --muted: #9aa8b6; --line: #2b3642;
+  --accent: #7db6df; --accent-soft: #1d3346; --pos: #6cc596; --neg: #f08a80; --rec: #2c2614; --rec-line: #7d6a2c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161c; --sheet: #182029; --ink: #e5ebf1; --muted: #9aa8b6; --line: #2b3642;
+  --accent: #7db6df; --accent-soft: #1d3346; --pos: #6cc596; --neg: #f08a80; --rec: #2c2614; --rec-line: #7d6a2c; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 22px; }
+h1 { font-family: var(--display); font-size: 28px; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 2px 0 0; }
+.progress { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 780px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+nav.rail { display: flex; flex-direction: column; gap: 6px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+@media (max-width: 780px) { nav.rail { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 4px; } }
+.qbtn { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 2px 10px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 9px 10px; color: var(--ink); font: inherit; cursor: pointer; }
+@media (max-width: 780px) { .qbtn { min-width: 190px; } }
+.qbtn:hover { background: var(--sheet); border-color: var(--line); }
+.qbtn[aria-current="true"] { background: var(--sheet); border-color: var(--accent); }
+.qbtn:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.qnum { font-family: var(--mono); font-size: 12px; color: var(--muted); grid-row: span 2; padding-top: 2px; }
+.qtitle { font-weight: 500; font-size: 14px; }
+.chip { justify-self: start; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.chip.open { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.chip.answered { color: var(--pos); border-color: var(--pos); }
+main.sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; padding: 26px clamp(16px, 3vw, 34px) 30px; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+h2 { font-family: var(--display); font-size: 24px; margin: 2px 0 0; text-wrap: balance; }
+.context p { margin: 0 0 10px; max-width: 70ch; }
+.context p:last-child { margin-bottom: 0; }
+.visual { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.panel { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.panel.wide { grid-column: 1 / -1; }
+.panel h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.panel .cap { font-size: 13px; color: var(--muted); margin: 0; }
+.tscroll { overflow-x: auto; }
+table { border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th, td { padding: 4px 9px; border-bottom: 1px solid var(--line); text-align: right; }
+th { color: var(--muted); font-weight: 500; }
+th:first-child, td:first-child { text-align: left; }
+td.neg { color: var(--neg); }
+td.hl { background: var(--accent-soft); font-weight: 500; }
+.ask { font-family: var(--display); font-size: 20px; line-height: 1.35; margin: 0; padding: 14px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; text-wrap: balance; }
+.options { display: grid; gap: 8px; }
+.opt { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 2px 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.opt input { grid-row: span 2; margin-top: 4px; accent-color: var(--accent); }
+.opt b { font-weight: 600; }
+.opt span { color: var(--muted); font-size: 14px; }
+.rec { background: var(--rec); border: 1px solid var(--rec-line); border-radius: 8px; padding: 12px 14px; }
+.rec .eyebrow { margin-bottom: 4px; }
+.rec p { margin: 0; max-width: 72ch; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-weight: 500; font-size: 14px; }
+.field small { color: var(--muted); font-size: 12.5px; }
+textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 92px; resize: vertical; width: 100%; box-sizing: border-box; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.save { font: inherit; font-weight: 600; background: var(--accent); color: var(--sheet); border: 0; border-radius: 8px; padding: 10px 18px; cursor: pointer; }
+.save[disabled] { opacity: .5; cursor: default; }
+.status { color: var(--muted); font-size: 14px; }
+.status.ok { color: var(--pos); }
+.status.err { color: var(--neg); }
+.answered-block { border-top: 1px dashed var(--line); padding-top: 14px; display: grid; gap: 6px; }
+.answered-block .quote { white-space: pre-wrap; margin: 0; padding-left: 12px; border-left: 2px solid var(--line); }
+.outcome { margin: 0; max-width: 72ch; }
+.empty { color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Equi Brainstorm Desk</h1>
+      <p class="sub">Document Intelligence take-home · answer here, then tell Claude in the terminal.</p>
+    </div>
+    <div class="progress" id="progress">Loading questions…</div>
+  </header>
+  <div class="grid">
+    <nav class="rail" id="rail" aria-label="Questions"></nav>
+    <main class="sheet" id="sheet">
+      <p class="empty" id="empty">Questions load from the shared store. If nothing appears, open this page in claude.ai while signed in.</p>
+    </main>
+  </div>
+</div>
+
+<script>
+const state = { questions: [], answers: {}, current: null, db: null };
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+const draftKey = (id) => "draft:" + id;
+function readDraft(id) { try { return JSON.parse(localStorage.getItem(draftKey(id)) || "null"); } catch { return null; } }
+function writeDraft(id, d) { try { localStorage.setItem(draftKey(id), JSON.stringify(d)); } catch {} }
+function clearDraft(id) { try { localStorage.removeItem(draftKey(id)); } catch {} }
+
+function renderRail() {
+  const rail = $("rail"); rail.replaceChildren();
+  for (const q of state.questions) {
+    const b = el("button", "qbtn"); b.type = "button";
+    b.setAttribute("aria-current", String(q.id === state.current));
+    const answered = !!state.answers[q.id];
+    b.append(el("span", "qnum", "Q" + q.n), el("span", "qtitle", q.title), el("span", "chip " + (answered ? "answered" : "open"), answered ? "answered" : "open"));
+    b.addEventListener("click", () => select(q.id));
+    rail.append(b);
+  }
+  const open = state.questions.filter(q => !state.answers[q.id]).length;
+  $("progress").textContent = state.questions.length ? `${state.questions.length - open} answered · ${open} open` : "No questions yet";
+}
+
+function cellClass(v, hl) {
+  let c = "";
+  if (typeof v === "string" && /^[−-]\d/.test(v.trim())) c = "neg";
+  if (hl) c += " hl";
+  return c;
+}
+
+function renderVisual(v) {
+  if (!v || !Array.isArray(v.panels)) return null;
+  const wrap = el("div", "visual");
+  for (const p of v.panels) {
+    const panel = el("section", "panel" + (p.wide ? " wide" : ""));
+    if (p.title) panel.append(el("h3", null, p.title));
+    if (p.table) {
+      const sc = el("div", "tscroll"); const t = el("table");
+      const hr = el("tr"); for (const h of p.table.head || []) hr.append(el("th", null, h));
+      const thead = el("thead"); thead.append(hr); t.append(thead);
+      const tb = el("tbody");
+      (p.table.rows || []).forEach((r, ri) => {
+        const tr = el("tr");
+        r.forEach((c, ci) => {
+          const hl = (p.table.highlight || []).some(([hrI, hcI]) => hrI === ri && hcI === ci);
+          tr.append(el("td", ci === 0 ? (hl ? "hl" : "") : cellClass(c, hl), c));
+        });
+        tb.append(tr);
+      });
+      t.append(tb); sc.append(t); panel.append(sc);
+    }
+    if (p.caption) panel.append(el("p", "cap", p.caption));
+    wrap.append(panel);
+  }
+  return wrap;
+}
+
+function renderSheet() {
+  const sheet = $("sheet"); sheet.replaceChildren();
+  const q = state.questions.find(x => x.id === state.current);
+  if (!q) { sheet.append(el("p", "empty", "No question selected.")); return; }
+  const head = el("div"); head.append(el("div", "eyebrow", `Q${q.n} · ${q.topic || "brainstorm"}`), el("h2", null, q.title));
+  sheet.append(head);
+  if (Array.isArray(q.context) && q.context.length) {
+    const c = el("div", "context"); for (const p of q.context) c.append(el("p", null, p)); sheet.append(c);
+  }
+  const vis = renderVisual(q.visual); if (vis) sheet.append(vis);
+  sheet.append(el("p", "ask", q.question));
+  if (q.recommendation) {
+    const r = el("div", "rec"); r.append(el("div", "eyebrow", "Claude's recommendation"), el("p", null, q.recommendation)); sheet.append(r);
+  }
+
+  const saved = state.answers[q.id];
+  const draft = readDraft(q.id);
+  const form = el("form"); form.className = "options-form"; form.style.display = "grid"; form.style.gap = "16px";
+  form.addEventListener("submit", (e) => { e.preventDefault(); save(q); });
+
+  if (Array.isArray(q.options) && q.options.length) {
+    const opts = el("div", "options"); opts.setAttribute("role", "radiogroup");
+    q.options.forEach((o, i) => {
+      const lab = el("label", "opt"); const inp = el("input"); inp.type = "radio"; inp.name = "choice"; inp.value = o.label; inp.id = `opt-${q.id}-${i}`;
+      const chosen = (draft && draft.choice) ?? (saved && saved.choice);
+      if (chosen === o.label) inp.checked = true;
+      inp.addEventListener("change", () => stash(q.id));
+      lab.append(inp, el("b", null, o.label), el("span", null, o.description || ""));
+      opts.append(lab);
+    });
+    form.append(opts);
+  }
+  const f1 = el("div", "field"); const l1 = el("label", null, q.options?.length ? "Anything to add or change?" : "Your answer"); l1.htmlFor = "ans-" + q.id;
+  const t1 = el("textarea"); t1.id = "ans-" + q.id; t1.name = "answer"; t1.value = (draft && draft.answer) ?? (saved && saved.answer) ?? "";
+  t1.addEventListener("input", () => stash(q.id));
+  f1.append(l1, t1);
+  const f2 = el("div", "field"); const l2 = el("label", null, "Why?"); l2.htmlFor = "why-" + q.id;
+  const t2 = el("textarea"); t2.id = "why-" + q.id; t2.name = "why"; t2.style.minHeight = "70px"; t2.value = (draft && draft.why) ?? (saved && saved.why) ?? "";
+  t2.addEventListener("input", () => stash(q.id));
+  f2.append(l2, t2, el("small", null, "Your reasoning goes into the versioned log word for word. Leave it blank if you'd rather not say."));
+  form.append(f1, f2);
+  const act = el("div", "actions"); const btn = el("button", "save", saved ? "Update answer" : "Save answer"); btn.type = "submit"; btn.id = "save-" + q.id;
+  const st = el("span", "status", saved ? `Saved ${fmtTime(saved.updatedAt)}${saved.source === "terminal" ? " · answered in the terminal" : ""}` : "Not saved yet");
+  st.id = "status";
+  if (!state.db) { btn.disabled = true; st.textContent = "Saving needs the shared store; open in claude.ai while signed in."; }
+  act.append(btn, st); form.append(act);
+  sheet.append(form);
+
+  if (q.outcome) {
+    const ob = el("div", "answered-block"); ob.append(el("div", "eyebrow", "Outcome (from the log)"), el("p", "outcome", q.outcome)); sheet.append(ob);
+  }
+}
+
+function fmtTime(iso) { if (!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); }
+
+function currentForm(qid) {
+  const choice = document.querySelector(`input[name="choice"]:checked`)?.value ?? null;
+  return { choice, answer: $("ans-" + qid)?.value ?? "", why: $("why-" + qid)?.value ?? "" };
+}
+function stash(qid) { writeDraft(qid, currentForm(qid)); const st = $("status"); if (st) { st.className = "status"; st.textContent = "Unsaved changes"; } }
+
+async function save(q) {
+  const st = $("status"); const btn = $("save-" + q.id); const body = currentForm(q.id);
+  if (!body.choice && !body.answer.trim()) { st.className = "status err"; st.textContent = "Pick an option or write an answer first."; return; }
+  btn.disabled = true; st.className = "status"; st.textContent = "Saving…";
+  try {
+    await state.db.doc("answers/" + q.id).set({ ...body, source: "web", updatedAt: new Date().toISOString() });
+    clearDraft(q.id); st.className = "status ok"; st.textContent = "Saved. Tell Claude in the terminal that Q" + q.n + " is answered.";
+  } catch (e) {
+    st.className = "status err"; st.textContent = e?.code === "invalid_argument" ? "Only the page owner can save answers." : "Couldn't save just now. Try again in a moment.";
+  } finally { btn.disabled = false; }
+}
+
+function select(id) {
+  state.current = id;
+  if (/^[A-Za-z0-9._~-]+$/.test(id)) history.replaceState(null, "", "#" + id);
+  renderRail(); renderSheet();
+}
+
+function pickDefault() {
+  const fromHash = location.hash.slice(1);
+  if (fromHash && state.questions.some(q => q.id === fromHash)) return fromHash;
+  const open = state.questions.find(q => !state.answers[q.id]);
+  return (open || state.questions[state.questions.length - 1])?.id ?? null;
+}
+
+(async () => {
+  let db = null;
+  try { db = window.claude?.use ? await window.claude.use("db") : null; } catch { db = null; }
+  if (!db) { $("progress").textContent = "Store unavailable"; return; }
+  state.db = db;
+  let firstLoad = true;
+  db.collection("questions").orderBy("n").onSnapshot((snap) => {
+    state.questions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (firstLoad || !state.questions.some(q => q.id === state.current)) { state.current = pickDefault(); }
+    firstLoad = false;
+    renderRail();
+    // Re-render the sheet only when nothing is mid-edit, so typing isn't lost.
+    if (!document.activeElement || !document.activeElement.closest?.("#sheet form")) renderSheet();
+  }, () => { $("progress").textContent = "Couldn't load questions"; });
+  db.collection("answers").onSnapshot((snap) => {
+    state.answers = Object.fromEntries(snap.docs.map(d => [d.id, d.data()]));
+    renderRail();
+    if (!document.activeElement || !document.activeElement.closest?.("#sheet form")) renderSheet();
+  }, () => {});
+})();
+</script>
