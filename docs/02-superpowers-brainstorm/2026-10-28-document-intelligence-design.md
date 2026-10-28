@@ -7,7 +7,8 @@
 > checked. The blind v0 (`docs/00-only-claude-ai/`) is superseded wherever
 > they differ.
 >
-> **Status:** draft. §8 (screen layout) waits on the mockup variant choice.
+> **Status:** complete, awaiting the user's approval. Mockup:
+> `2026-10-28-document-intelligence-mockup.html` (variants chosen in Q27–Q29).
 
 ## 1. Intent
 
@@ -283,8 +284,17 @@ Five surfaces (Q20), all scoped to the signed-in user:
   every screen and opens its own results page with a URL, so Back returns to
   an answer after opening a source document. Ask answers need the width for
   ranked tables.
-- **Document view:** TBD (Q28).
-- **Data table:** TBD (Q29).
+- **Document view: variant A (Q28).** The file on the left, streamed from
+  Drive; on the right, tabs for "As printed" (a picker per table or sheet)
+  and "Common rows". Man AHL alone has 6 tables and 158 rows, which is too
+  long to stack.
+- **Data table: variant A (Q29).** One row per number: fund or account ·
+  share class · period · measure · value · markers · source document. When
+  sources differ, both rows stay visible. A funds × months grid may come
+  later as a second view.
+- **UI kit (Q26):** Tailwind + shadcn/ui. The mockup's components (Button,
+  Badge, Tabs, ToggleGroup, DataTable with faceted filters, Alert, Progress,
+  Skeleton, Tooltip, Popover + Command) are the build's components.
 
 ## 9. Ask: questions over the app's own APIs
 
@@ -377,5 +387,4 @@ needs_review) · `chunk` (document, kind, text, tsvector, embedding vector) ·
 
 ## 14. Open
 
-- Document view and Data table layout (§8, Q28–Q29).
 - Anything the builder check raises that only the user can answer.

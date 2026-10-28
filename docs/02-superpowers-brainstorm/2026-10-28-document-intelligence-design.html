@@ -75,7 +75,8 @@ decision cites the question that settled it. Anything marked <strong>(Claude's
 call)</strong> is a gap Claude filled; it's listed again in §13 so it can be
 checked. The blind v0 (<code>docs/00-only-claude-ai/</code>) is superseded wherever
 they differ.</p>
-<p><strong>Status:</strong> draft. §8 (screen layout) waits on the mockup variant choice.</p>
+<p><strong>Status:</strong> complete, awaiting the user's approval. Mockup:
+<code>2026-10-28-document-intelligence-mockup.html</code> (variants chosen in Q27–Q29).</p>
 </blockquote>
 <h2 id="1-intent">1. Intent</h2>
 <p>An allocator's Drive folder fills up with documents from many managers:
@@ -341,8 +342,17 @@ KNOW is inside of a file."</em> Up to ~15 s for a correct answer is acceptable.<
   every screen and opens its own results page with a URL, so Back returns to
   an answer after opening a source document. Ask answers need the width for
   ranked tables.
-- <strong>Document view:</strong> <mark class="tbd">TBD</mark> <span class="qref">Q28</span>.
-- <strong>Data table:</strong> <mark class="tbd">TBD</mark> <span class="qref">Q29</span>.</p>
+- <strong>Document view: variant A <span class="qref">Q28</span>.</strong> The file on the left, streamed from
+  Drive; on the right, tabs for "As printed" (a picker per table or sheet)
+  and "Common rows". Man AHL alone has 6 tables and 158 rows, which is too
+  long to stack.
+- <strong>Data table: variant A <span class="qref">Q29</span>.</strong> One row per number: fund or account ·
+  share class · period · measure · value · markers · source document. When
+  sources differ, both rows stay visible. A funds × months grid may come
+  later as a second view.
+- <strong>UI kit <span class="qref">Q26</span>:</strong> Tailwind + shadcn/ui. The mockup's components (Button,
+  Badge, Tabs, ToggleGroup, DataTable with faceted filters, Alert, Progress,
+  Skeleton, Tooltip, Popover + Command) are the build's components.</p>
 <h2 id="9-ask-questions-over-the-apps-own-apis">9. Ask: questions over the app's own APIs</h2>
 <ul>
 <li><strong>Tools are the app's own endpoints <span class="qref">Q7</span>.</strong> The read endpoints that Ask may
@@ -432,7 +442,6 @@ needs_review) · <code>chunk</code> (document, kind, text, tsvector, embedding v
 </ol>
 <h2 id="14-open">14. Open</h2>
 <ul>
-<li>Document view and Data table layout (§8, Q28–Q29).</li>
 <li>Anything the builder check raises that only the user can answer.</li>
 </ul></article>
 </div>

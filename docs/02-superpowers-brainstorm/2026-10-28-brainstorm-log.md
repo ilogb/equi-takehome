@@ -439,3 +439,20 @@ markup, so what is approved looks like what gets built.
 - **Q32 CapRover:** the server exists. The build ships the CapRover config
   and README, and the app is deployed together with the user as the final
   step (recommended).
+
+### Q28–Q29 — answered in a second paste from the rebuilt (Tailwind/shadcn) mockup
+**Pasted answers (verbatim, relevant lines).**
+> - Decision 1 · Where do results from the unified search box go?
+>   Answer: (none)
+> - Decision 2 · How do printed tables and common rows sit beside the file?
+>   Answer: A: tabs
+> - Decision 3 · What shape is the Data table?
+>   Answer: A: one row per number
+(The other three answers repeated round 7 unchanged.)
+**Outcomes.**
+- **Q28 Document view:** variant A. The file on the left; on the right, tabs
+  for "As printed" and "Common rows" (recommended).
+- **Q29 Data table:** variant A, one row per number. Disagreeing sources stay
+  visible as separate rows; a funds × months grid may come later as a second
+  view (recommended).
+- Decision 1 left blank in this paste; the round 7 answer (A) stands.
