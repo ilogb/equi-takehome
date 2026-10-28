@@ -14,6 +14,9 @@ UnitHint = Literal["percent", "fraction", "currency", "number"]
 
 _PLACEHOLDERS = {"", "-", "–", "—", "n/a", "n/m"}
 _CURRENCY_SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP"}
+_ISO_CODES = "USD|EUR|GBP|CHF|JPY|CAD|AUD|NZD|HKD|SGD|SEK|NOK|DKK|CNY"
+_ISO_PREFIX = re.compile(rf"^(-\s*)?({_ISO_CODES})\s+", re.IGNORECASE)
+_ISO_SUFFIX = re.compile(rf"\s+({_ISO_CODES})$", re.IGNORECASE)
 _MULTIPLIERS = {"m": Decimal(10) ** 6, "bn": Decimal(10) ** 9}
 _NUMBER = re.compile(
     r"""^(?P<neg>-)?\s*(?P<cur>[$€£])?\s*(?P<neg2>-)?\s*
@@ -31,13 +34,20 @@ class ParsedValue:
 
 
 def parse_value(text: str, unit_hint: UnitHint | None) -> ParsedValue | None:
-    s = text.strip().replace("−", "-").replace("+", "", 1)
+    s = text.strip().rstrip("*").rstrip().replace("−", "-").replace("+", "", 1)
     if s.lower() in _PLACEHOLDERS:
         return None
     negative = False
     if s.startswith("(") and s.endswith(")"):
         negative = True
         s = s[1:-1].strip()
+    iso: str | None = None
+    if pre := _ISO_PREFIX.match(s):
+        iso = pre[2].upper()
+        s = ("-" if pre[1] else "") + s[pre.end():]
+    elif suf := _ISO_SUFFIX.search(s):
+        iso = suf[1].upper()
+        s = s[: suf.start()]
     m = _NUMBER.match(s)
     if not m:
         return None
@@ -47,7 +57,7 @@ def parse_value(text: str, unit_hint: UnitHint | None) -> ParsedValue | None:
         return None
     negative = negative or bool(m["neg"] or m["neg2"])
     suffix = (m["suffix"] or "").lower()
-    currency = _CURRENCY_SYMBOLS.get(m["cur"]) if m["cur"] else None
+    currency = _CURRENCY_SYMBOLS.get(m["cur"]) if m["cur"] else iso
 
     unit: Unit
     if suffix == "%" or (unit_hint == "percent" and not suffix):

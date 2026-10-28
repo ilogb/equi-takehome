@@ -24,6 +24,13 @@ D = Decimal
         ("1,234.5", None, ParsedValue(D("1234.5"), "number", None)),
         ("0.0123", "fraction", ParsedValue(D("0.0123"), "fraction", None)),
         ("250", "currency", ParsedValue(D("250"), "currency", None)),
+        ("USD 313,174,253", None, ParsedValue(D("313174253"), "currency", "USD")),
+        ("EUR 5.8bn", None, ParsedValue(D("5800000000"), "currency", "EUR")),
+        ("1,234 GBP", None, ParsedValue(D("1234"), "currency", "GBP")),
+        ("(USD 1,000)", None, ParsedValue(D("-1000"), "currency", "USD")),
+        ("-USD 1,000", None, ParsedValue(D("-1000"), "currency", "USD")),
+        ("3.87%*", None, ParsedValue(D("0.0387"), "fraction", None)),
+        ("usd 12", None, ParsedValue(D("12"), "currency", "USD")),
     ],
 )
 def test_parse_value(text, hint, expected):
