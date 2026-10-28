@@ -19,8 +19,8 @@ export function ReviewMarker({ reason, className }: { reason?: string | null; cl
 }
 
 /** "≠" next to a value that two current documents report differently. */
-export function DiffMarker({ className }: { className?: string }) {
-  const title = 'Sources differ'
+export function DiffMarker({ detail, className }: { detail?: string | null; className?: string }) {
+  const title = detail ? `Sources differ: ${detail}` : 'Sources differ'
   return (
     <span
       role="img"

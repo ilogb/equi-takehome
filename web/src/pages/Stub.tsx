@@ -10,7 +10,6 @@ function Stub({ title, children }: { title: string; children?: React.ReactNode }
   )
 }
 
-export const DataPage = () => <Stub title="Data" />
 export function SearchPage() {
   const [params] = useSearchParams()
   const mode = params.get('mode') === 'analyze' ? 'analyze' : 'find'
