@@ -17,7 +17,7 @@ You don't need Node, Python or a Google Cloud project; Docker builds everything.
 1. Clone the repo and go into it:
 
    ```bash
-   git clone <repo-url> equi-takehome
+   git clone https://github.com/ilogb/equi-takehome.git
    cd equi-takehome
    ```
 
