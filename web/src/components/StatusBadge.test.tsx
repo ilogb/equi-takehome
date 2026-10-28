@@ -22,4 +22,8 @@ describe('StatusBadge', () => {
     expect(badge).toBeInTheDocument()
     expect(badge.closest('[data-variant]')).toHaveAttribute('data-variant', variant)
   })
+  it('renders a neutral fallback for an unknown status instead of throwing', () => {
+    render(<StatusBadge status={'weird' as FileStatus} />)
+    expect(screen.getByText('weird')).toHaveAttribute('data-variant', 'muted')
+  })
 })

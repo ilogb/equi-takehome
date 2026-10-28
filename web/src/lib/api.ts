@@ -275,7 +275,8 @@ export function useSyncNow() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: api.syncNow,
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.folder }),
+    onSuccess: () =>
+      Promise.all([qc.invalidateQueries({ queryKey: keys.folder }), qc.invalidateQueries({ queryKey: ['files'] })]),
   })
 }
 

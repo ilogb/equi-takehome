@@ -1,13 +1,13 @@
 /** /library: every synced file with status, metadata, tags and path; sync controls and reconnect handling (L1-L4). */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, RefreshCw, Tag } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { RefreshCw, Tag } from 'lucide-react'
+import { useEffect } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { FileTypeIcon } from '@/components/FileTypeIcon'
 import { FILE_STATUSES, StatusBadge, type FileStatus } from '@/components/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { api, folderQuery, keys, urls, useSyncNow, type FileRow } from '@/lib/api'
+import { api, ApiError, folderQuery, keys, urls, useSyncNow, type FileRow } from '@/lib/api'
 import { relativeTime } from '@/components/SyncPill'
 import { cn } from '@/lib/utils'
 
@@ -95,6 +95,7 @@ function FileRowView({ f, onOpen }: { f: FileRow; onOpen: () => void }) {
             </Button>
           )}
         </div>
+        {retry.isError && <p role="alert" className="mt-1 text-xs text-negative">Could not retry. Try again.</p>}
       </td>
       <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
         <span title={exactTime(f.updated_at)}>{relativeTime(f.updated_at)}</span>
@@ -105,8 +106,24 @@ function FileRowView({ f, onOpen }: { f: FileRow; onOpen: () => void }) {
 
 export function Library() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<FileStatus | undefined>()
+  const [params, setParams] = useSearchParams()
+  const raw = params.get('status')
+  const status = FILE_STATUSES.find((s) => s === raw)
+  const setStatus = (next: FileStatus | undefined) =>
+    setParams(
+      (p) => {
+        const n = new URLSearchParams(p)
+        if (next) n.set('status', next)
+        else n.delete('status')
+        return n
+      },
+      { replace: false },
+    )
   const folder = useQuery(folderQuery())
+  const noFolder = folder.error instanceof ApiError && folder.error.status === 404
+  useEffect(() => {
+    if (noFolder) navigate('/connect', { replace: true })
+  }, [noFolder, navigate])
   const counts = folder.data?.counts_by_status ?? {}
   const pending = (counts.queued ?? 0) + (counts.processing ?? 0) > 0
   const filters = { status }
@@ -117,10 +134,11 @@ export function Library() {
       pending || q.state.data?.some((r) => r.status === 'queued' || r.status === 'processing') ? POLL_MS : false,
   })
   const sync = useSyncNow()
+  const folderFailed = folder.isError && !noFolder
   const needsReconnect = folder.data?.needs_reconnect ?? false
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0)
   const rows = files.data ?? []
-  const syncDisabled = pending || needsReconnect || sync.isPending
+  const syncDisabled = pending || needsReconnect || sync.isPending || folderFailed || !folder.data
   const lastSynced = folder.data?.last_synced_at ? exactTime(folder.data.last_synced_at) : null
 
   return (
@@ -140,28 +158,36 @@ export function Library() {
         </Alert>
       )}
 
+      {folderFailed && (
+        <Alert variant="destructive">
+          <AlertTitle>Could not load the folder status.</AlertTitle>
+          <AlertDescription>Check your connection and try again in a moment.</AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Library</h1>
           <p className="text-sm text-muted-foreground">
-            {total} {total === 1 ? 'file' : 'files'}
-            {folder.data ? ` in ${folder.data.name}` : ''}
-            {needsReconnect ? ' · not syncing' : ' · checks for changes every 60 s'}
+            {folder.data
+              ? `${total} ${total === 1 ? 'file' : 'files'} in ${folder.data.name}${
+                  needsReconnect ? ' · not syncing' : ' · checks for changes every 60 s'
+                }`
+              : ' '}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <a href="https://drive.google.com/drive/my-drive" target="_blank" rel="noreferrer">
-              <ExternalLink aria-hidden />
-              Open folder in Drive
-            </a>
-          </Button>
           <Button size="sm" disabled={syncDisabled} onClick={() => sync.mutate()}>
             <RefreshCw className={cn(pending && 'animate-spin')} aria-hidden />
             Sync now
           </Button>
         </div>
       </div>
+      {sync.isError && (
+        <p role="alert" className="text-sm text-negative">
+          Could not start a sync. Try again.
+        </p>
+      )}
 
       {total > 0 && (
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by status">
@@ -207,7 +233,7 @@ export function Library() {
             {rows.map((f) => (
               <FileRowView key={f.id} f={f} onOpen={() => navigate(`/documents/${f.id}`)} />
             ))}
-            {files.isSuccess && rows.length === 0 && (
+            {files.isSuccess && rows.length === 0 && !folderFailed && (
               <tr>
                 <td colSpan={8} className="px-3 py-10 text-center">
                   {status ? (

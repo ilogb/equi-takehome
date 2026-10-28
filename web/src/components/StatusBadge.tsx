@@ -36,7 +36,7 @@ const VARIANT_CLASS: Record<Variant, string> = {
 }
 
 export function StatusBadge({ status, className }: { status: FileStatus; className?: string }) {
-  const { label, variant, icon: Icon } = CONFIG[status]
+  const { label, variant, icon: Icon } = CONFIG[status] ?? { label: String(status), variant: 'muted' as Variant, icon: CircleHelp }
   return (
     <span
       data-variant={variant}

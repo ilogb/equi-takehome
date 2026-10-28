@@ -41,13 +41,20 @@ function Where() {
   return <div data-testid="where">{useLocation().pathname}</div>
 }
 
-function renderLibrary() {
+function Url() {
+  const l = useLocation()
+  return <div data-testid="url">{l.pathname + l.search}</div>
+}
+
+function renderLibrary(path = '/library') {
   return render(
-    <MemoryRouter initialEntries={['/library']}>
+    <MemoryRouter initialEntries={[path]}>
+      <Url />
       <QueryProvider retry={false}>
         <Routes>
           <Route path="/library" element={<Library />} />
           <Route path="/documents/:id" element={<Where />} />
+          <Route path="/connect" element={<Where />} />
         </Routes>
       </QueryProvider>
     </MemoryRouter>,
@@ -86,7 +93,7 @@ describe('L1 default', () => {
     expect(r.getByText('Done')).toBeInTheDocument()
     expect(r.getByText('8 min ago')).toHaveAttribute('title', expect.stringContaining('2026'))
     expect(screen.getByText('Scanned: no text', { selector: 'span' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open folder in drive/i })).toHaveAttribute('href')
+    expect(screen.queryByRole('link', { name: /open folder in drive/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sync now/i })).toBeEnabled()
   })
 
@@ -102,6 +109,7 @@ describe('L1 default', () => {
     renderLibrary()
     await screen.findByText('bad.pdf')
     await userEvent.click(screen.getByRole('button', { name: /failed.*1|1.*failed/i }))
+    expect(screen.getByTestId('url')).toHaveTextContent('/library?status=failed')
     await waitFor(() => expect(screen.queryByText('fundsmith_factsheet_2026-08.pdf')).not.toBeInTheDocument())
     expect(screen.getByText('bad.pdf')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /all/i }))
@@ -122,6 +130,58 @@ describe('L1 default', () => {
     await userEvent.click(screen.getByRole('button', { name: /retry/i }))
     await waitFor(() => expect(retried).toBe(1))
     expect(screen.queryByTestId('where')).not.toBeInTheDocument()
+  })
+})
+
+describe('status in the URL', () => {
+  const two = [file(), file({ id: 2, name: 'bad.pdf', status: 'failed', error: 'boom' })]
+  it('renders only failed rows for ?status=failed', async () => {
+    use(two, folder({ done: 1, failed: 1 }))
+    renderLibrary('/library?status=failed')
+    await screen.findByText('bad.pdf')
+    expect(screen.queryByText('fundsmith_factsheet_2026-08.pdf')).not.toBeInTheDocument()
+  })
+  it('treats an unknown status as All', async () => {
+    use(two, folder({ done: 1, failed: 1 }))
+    renderLibrary('/library?status=bogus')
+    expect(await screen.findByText('bad.pdf')).toBeInTheDocument()
+    expect(screen.getByText('fundsmith_factsheet_2026-08.pdf')).toBeInTheDocument()
+  })
+})
+
+describe('folder errors', () => {
+  it('goes to /connect when no folder is chosen', async () => {
+    use([])
+    server.use(http.get('/api/folder', () => HttpResponse.json({ detail: 'No folder chosen' }, { status: 404 })))
+    renderLibrary()
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/connect'))
+  })
+  it('shows an error alert, not the empty state, on other folder errors, and disables Sync now', async () => {
+    use([])
+    server.use(http.get('/api/folder', () => HttpResponse.json({ detail: 'boom' }, { status: 500 })))
+    renderLibrary()
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not load the folder/i)
+    expect(screen.queryByText(/0 files/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/no documents the app can read yet/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sync now/i })).toBeDisabled()
+  })
+})
+
+describe('mutation failures', () => {
+  it('shows an inline error when Sync now fails', async () => {
+    use([file()])
+    server.use(http.post('/api/folder/sync', () => HttpResponse.json({ detail: 'x' }, { status: 500 })))
+    renderLibrary()
+    await screen.findByText('fundsmith_factsheet_2026-08.pdf')
+    await userEvent.click(screen.getByRole('button', { name: /sync now/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not start a sync/i)
+  })
+  it('shows an inline error when Retry fails', async () => {
+    use([file({ id: 9, status: 'failed', error: 'e' })], folder({ failed: 1 }))
+    server.use(http.post('/api/files/9/retry', () => HttpResponse.json({ detail: 'x' }, { status: 500 })))
+    renderLibrary()
+    await userEvent.click(await screen.findByRole('button', { name: /retry/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not retry/i)
   })
 })
 
@@ -154,6 +214,23 @@ describe('L2 syncing', () => {
     await screen.findByText('fundsmith_factsheet_2026-08.pdf')
     await userEvent.click(screen.getByRole('button', { name: /sync now/i }))
     await waitFor(() => expect(posted).toBe(1))
+  })
+
+  it('refetches the files list after Sync now succeeds', async () => {
+    let calls = 0
+    use([file()])
+    server.use(
+      http.get('/api/files', () => {
+        calls++
+        return HttpResponse.json([file()])
+      }),
+      http.post('/api/folder/sync', () => HttpResponse.json({ queued: 1, ignored: 0 })),
+    )
+    renderLibrary()
+    await screen.findByText('fundsmith_factsheet_2026-08.pdf')
+    const before = calls
+    await userEvent.click(screen.getByRole('button', { name: /sync now/i }))
+    await waitFor(() => expect(calls).toBeGreaterThan(before))
   })
 
   it('refetches the list every 5 s while anything is queued or processing', async () => {
