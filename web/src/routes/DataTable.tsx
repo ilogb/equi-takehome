@@ -1,7 +1,7 @@
 /** /data: one row per number across every fund and account, filtered, sorted and paged on the server (T1-T3). */
 import { useQuery } from '@tanstack/react-query'
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Download } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Download, X } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { DiffMarker, ReviewMarker } from '@/components/Markers'
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { api, keys, urls, type DataRow, type Measure, type PeriodKind, type RowsFilters } from '@/lib/api'
 import { formatMoney, formatPercent } from '@/lib/format'
+import { documentPath } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 
 const DEFAULT_LIMIT = 100
@@ -89,13 +90,30 @@ function FacetFilter({
   }
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn('h-8 gap-1.5', value && 'border-primary/50')}>
-          {label}
-          {display && <span className="font-semibold">{display}</span>}
-          <ChevronDown className="size-3.5 opacity-60" aria-hidden />
-        </Button>
-      </PopoverTrigger>
+      <div className="inline-flex">
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn('h-8 gap-1.5', value && 'rounded-r-none border-r-0 border-primary/50')}
+          >
+            {label}
+            {display && <span className="font-semibold">{display}</span>}
+            <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+          </Button>
+        </PopoverTrigger>
+        {value && (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Clear ${label.toLowerCase()}`}
+            className="h-8 w-7 rounded-l-none border-primary/50 px-0 text-muted-foreground"
+            onClick={() => onChange(undefined)}
+          >
+            <X aria-hidden />
+          </Button>
+        )}
+      </div>
       <PopoverContent>
         <Command>
           <CommandInput placeholder={`Filter ${label.toLowerCase()}`} aria-label={`Filter ${label.toLowerCase()}`} />
@@ -236,7 +254,7 @@ export function DataTable() {
         id: 'source',
         header: 'Source',
         cell: ({ row: { original: r } }) => (
-          <Link to={`/documents/${r.document_id}`} className="block max-w-56 truncate text-primary hover:underline" title={r.document_name}>
+          <Link to={documentPath(r.document_id, r.document_name)} className="block max-w-56 truncate text-primary hover:underline" title={r.document_name}>
             {r.document_name}
           </Link>
         ),
@@ -266,7 +284,7 @@ export function DataTable() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Data</h1>
           <p className="text-sm text-muted-foreground">
-            Common rows across every fund and account
+            Every data point from your documents, across funds and accounts
             {rows.data ? ` · ${total.toLocaleString('en-US')} ${total === 1 ? 'row' : 'rows'}` : ''}
           </p>
         </div>
@@ -354,6 +372,12 @@ export function DataTable() {
             checked
             onChange={() => patch({ document_id: undefined })}
           />
+        )}
+        {anyFilter && (
+          <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={clearAll}>
+            <X aria-hidden />
+            Clear all
+          </Button>
         )}
       </div>
 

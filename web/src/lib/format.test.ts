@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatMoney, formatPercent } from './format'
+import { formatMoney, formatMoneyCompact, formatPercent } from './format'
 
 describe('formatPercent', () => {
   it('turns a fraction string into a percentage with two decimals', () => {
@@ -48,5 +48,20 @@ describe('formatMoney', () => {
   it('shows a plain number and the raw currency text when Intl rejects the code', () => {
     expect(formatMoney('1234.5', 'US$')).toBe('1,234.50 US$')
     expect(formatMoney('-1500', 'points')).toBe('−1,500.00 points')
+  })
+})
+
+describe('formatMoneyCompact', () => {
+  it('shortens large amounts with the currency symbol', () => {
+    expect(formatMoneyCompact('4500000000', 'EUR')).toBe('€4.5B')
+    expect(formatMoneyCompact('313174253', 'USD')).toBe('$313.17M')
+  })
+  it('keeps small amounts readable and works without a currency', () => {
+    expect(formatMoneyCompact('147192.36', 'USD')).toBe('$147.19K')
+    expect(formatMoneyCompact('612000000', null)).toBe('612M')
+  })
+  it('falls back to the raw currency text for unknown codes, and a dash for bad input', () => {
+    expect(formatMoneyCompact('2020000000', 'US$')).toBe('2.02B US$')
+    expect(formatMoneyCompact(null, 'USD')).toBe('—')
   })
 })

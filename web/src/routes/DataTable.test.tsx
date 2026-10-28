@@ -111,7 +111,7 @@ describe('T1 default', () => {
     expect(within(man).getByText('month · 2026-01-31')).toBeInTheDocument()
     expect(within(man).getByText('8.42%')).toBeInTheDocument()
     const src = within(man).getByRole('link', { name: 'man-ahl_factsheet.pdf' })
-    expect(src).toHaveAttribute('href', '/documents/10')
+    expect(src).toHaveAttribute('href', '/documents/10-man-ahl-factsheet')
     const uvic = screen.getByText('UVic MPP').closest('tr')!
     expect(within(uvic).getByText('$24,963,108.45')).toBeInTheDocument()
     expect(within(uvic).getByText('Account value')).toBeInTheDocument()
@@ -253,6 +253,26 @@ describe('Export CSV', () => {
     expect(u.searchParams.get('sort')).toBe('value')
     expect(u.searchParams.get('offset')).toBeNull()
     expect(u.searchParams.get('limit')).toBeNull()
+  })
+})
+
+describe('clearing filters', () => {
+  it('each active filter has its own clear button that removes only that filter', async () => {
+    useRows()
+    renderData('/data?measure=return&conflict=true')
+    await screen.findByText('Man AHL Diversified')
+    await userEvent.click(screen.getByRole('button', { name: 'Clear measure' }))
+    await waitFor(() => expect(url()).toBe('/data?conflict=true'))
+    expect(screen.queryByRole('button', { name: 'Clear measure' })).not.toBeInTheDocument()
+  })
+
+  it('Clear all shows while any filter is active and resets them all', async () => {
+    useRows()
+    renderData('/data?measure=return&conflict=true&start=2026-01-01')
+    await screen.findByText('Man AHL Diversified')
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+    await waitFor(() => expect(url()).toBe('/data'))
+    expect(screen.queryByRole('button', { name: 'Clear all' })).not.toBeInTheDocument()
   })
 })
 

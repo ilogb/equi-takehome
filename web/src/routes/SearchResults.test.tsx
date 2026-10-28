@@ -63,7 +63,7 @@ describe('Find mode', () => {
     expect(marks[0].textContent?.toLowerCase()).toBe('fundsmith')
     const similar = screen.getByRole('complementary', { name: /similar documents/i })
     const link = within(similar).getByRole('link', { name: /sibling\.pdf/ })
-    expect(link).toHaveAttribute('href', '/documents/13')
+    expect(link).toHaveAttribute('href', '/documents/13-sibling')
   })
 
   it('selecting another hit loads its similar documents', async () => {
@@ -121,13 +121,13 @@ describe('Analyze mode', () => {
   it('shows loading state then the answer, table, sources and steps', async () => {
     server.use(http.post('/api/analyze', () => HttpResponse.json(answer)))
     renderAt('/search?q=how%20did%20fundsmith%20do&mode=analyze')
-    expect(screen.getByText(/looking up your data \(up to 5 lookups\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/looking up your data/i)).toBeInTheDocument()
     expect(await screen.findByText(answer.text)).toBeInTheDocument()
     expect(screen.queryByText(/looking up your data/i)).not.toBeInTheDocument()
     const cell = screen.getByRole('cell', { name: '8.42%' })
     expect(cell.className).toMatch(/text-right/)
     expect(screen.getByRole('cell', { name: 'Fundsmith Equity' }).className).not.toMatch(/text-right/)
-    expect(screen.getByRole('link', { name: /fundsmith_factsheet\.pdf/ })).toHaveAttribute('href', '/documents/11')
+    expect(screen.getByRole('link', { name: /fundsmith_factsheet\.pdf/ })).toHaveAttribute('href', '/documents/11-fundsmith-factsheet')
     expect(screen.getByText('Looked up return rows')).toBeInTheDocument()
   })
 
@@ -137,6 +137,45 @@ describe('Analyze mode', () => {
     renderAt('/search?q=what&mode=analyze')
     expect(await screen.findByText(text)).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
+
+  it('a failed request offers Try again, which asks again and shows the answer', async () => {
+    let calls = 0
+    server.use(
+      http.post('/api/analyze', () => {
+        calls += 1
+        return calls === 1 ? new HttpResponse(null, { status: 502 }) : HttpResponse.json(answer)
+      }),
+    )
+    renderAt('/search?q=what&mode=analyze')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't answer right now/i)
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText(answer.text)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+    expect(calls).toBe(2)
+  })
+
+  it('a retryable answer (model unavailable) offers Try again', async () => {
+    let calls = 0
+    const unavailable = { text: "Couldn't answer right now — try again.", table: null, sources: [], steps: [], retryable: true }
+    server.use(
+      http.post('/api/analyze', () => {
+        calls += 1
+        return HttpResponse.json(calls === 1 ? unavailable : answer)
+      }),
+    )
+    renderAt('/search?q=what&mode=analyze')
+    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText(answer.text)).toBeInTheDocument()
+    expect(calls).toBe(2)
+  })
+
+  it('a non-retryable answer has no Try again', async () => {
+    const text = 'I could not reach an answer within 5 tool calls. Try a narrower question.'
+    server.use(http.post('/api/analyze', () => HttpResponse.json({ text, table: null, sources: [], steps: [], retryable: false })))
+    renderAt('/search?q=what&mode=analyze')
+    expect(await screen.findByText(text)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   })
 
   it('Back from a source returns to the same URL without re-POSTing', async () => {

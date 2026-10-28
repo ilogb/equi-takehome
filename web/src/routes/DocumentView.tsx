@@ -1,41 +1,17 @@
-/** /documents/:id: the source file beside tabbed extraction (As printed, Common rows). States D1-D6. */
+/** /documents/:id-:name (the id alone also works): the source file and the tables printed in it (Source tables). States D1-D6. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ExternalLink, RefreshCw, Tag } from 'lucide-react'
-import { useCallback, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { DiffMarker, ReviewMarker } from '@/components/Markers'
-import { SourceViewer } from '@/components/SourceViewer'
+import { ChevronLeft, ExternalLink, FileText, RefreshCw, Tag } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { SourceViewer, viewerKind } from '@/components/SourceViewer'
 import { FileTypeIcon } from '@/components/FileTypeIcon'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { api, fundLabel, keys, type DataRow, type DocumentDetail, type DocumentTable } from '@/lib/api'
-import { formatMoney, formatPercent } from '@/lib/format'
+import { api, ApiError, fundLabel, keys, urls, type DocumentDetail, type DocumentTable } from '@/lib/api'
+import { useContent } from '@/lib/fileContent'
+import { documentIdFromParam, documentPath } from '@/lib/paths'
 import { cn } from '@/lib/utils'
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const PERCENT_MEASURES = new Set(['return', 'benchmark_return', 'account_return'])
-const MEASURE_LABEL: Record<string, string> = {
-  return: 'Return',
-  benchmark_return: 'Benchmark return',
-  aum: 'AUM',
-  nav: 'NAV',
-  account_value: 'Account value',
-  account_return: 'Account return',
-}
-
-function periodLabel(r: DataRow): string {
-  const [y, m] = r.period_end.split('-')
-  if (r.period_kind === 'month') return `${MONTHS[Number(m) - 1]} ${y}`
-  return r.period_kind === 'other' ? r.period_end : `${r.period_kind.toUpperCase()} to ${r.period_end}`
-}
-
-function valueText(r: DataRow): string {
-  if (!PERCENT_MEASURES.has(r.measure)) return formatMoney(r.value, r.currency)
-  const text = formatPercent(r.value)
-  return r.value.trim().startsWith('-') || /^[+]?0*\.?0*$/.test(r.value.trim()) ? text : `+${text}`
-}
 
 function PrintedTables({
   tables,
@@ -69,7 +45,7 @@ function PrintedTables({
       </div>
       {holdings && (
         <p className="text-xs text-muted-foreground">
-          Per-holding gains are not fund returns, so this table is kept as printed and none of it becomes common rows.
+          Per-holding gains are not fund returns, so this table is kept as printed and none of it becomes data points.
         </p>
       )}
       <div className="overflow-auto rounded-lg border">
@@ -107,88 +83,6 @@ function PrintedTables({
   )
 }
 
-function CommonRows({
-  rows,
-  total,
-  documentId,
-  statement,
-}: {
-  rows: DataRow[]
-  total: number
-  documentId: number
-  statement: boolean
-}) {
-  const anyReview = rows.some((r) => r.needs_review)
-  const anyDiff = rows.some((r) => r.conflict)
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">No common rows were extracted from this file.</p>
-  return (
-    <div className="space-y-3">
-      {statement && (
-        <p className="text-xs text-muted-foreground">
-          Account value and account return are kept apart from fund returns.
-        </p>
-      )}
-      {(anyReview || anyDiff) && (
-        <div className="space-y-1 text-xs text-muted-foreground">
-          {anyReview && (
-            <p className="flex items-center gap-1.5">
-              <ReviewMarker /> marks a value the extractor was not sure about; the reason is shown beside it.
-            </p>
-          )}
-          {anyDiff && (
-            <p className="flex items-center gap-1.5">
-              <DiffMarker /> marks a value that another current document reports differently.
-            </p>
-          )}
-        </div>
-      )}
-      <div className="overflow-auto rounded-lg border">
-        <table className="w-full border-collapse text-xs">
-          <thead>
-            <tr className="border-b bg-muted/50 text-left">
-              {['Fund', 'Class', 'Period', 'Measure', 'Value', 'Printed as', 'Ccy'].map((h) => (
-                <th key={h} scope="col" className={cn('whitespace-nowrap px-2 py-1.5 font-medium', h === 'Value' && 'text-right')}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b align-top last:border-0">
-                <td className="px-2 py-1">{r.entity}</td>
-                <td className="px-2 py-1">{r.share_class}</td>
-                <td className="whitespace-nowrap px-2 py-1 tabular-nums">{periodLabel(r)}</td>
-                <td className="px-2 py-1">{MEASURE_LABEL[r.measure] ?? r.measure}</td>
-                <td className="px-2 py-1 text-right tabular-nums">
-                  <span className="inline-flex items-center justify-end gap-1.5">
-                    {r.needs_review && <ReviewMarker reason={r.review_reason} />}
-                    {r.conflict && <DiffMarker />}
-                    <span className={cn(r.value.trim().startsWith('-') && 'text-negative')}>{valueText(r)}</span>
-                  </span>
-                  {r.needs_review && r.review_reason && (
-                    <div className="mt-0.5 text-[11px] text-warning">{r.review_reason}</div>
-                  )}
-                </td>
-                <td className="px-2 py-1 tabular-nums text-muted-foreground">{r.value_as_written}</td>
-                <td className="px-2 py-1">{r.currency}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {total > rows.length && (
-        <p className="text-xs text-muted-foreground">
-          Showing {rows.length.toLocaleString('en-US')} of {total.toLocaleString('en-US')} —{' '}
-          <Link to={`/data?document_id=${documentId}`} className="text-primary hover:underline">
-            see all in Data
-          </Link>
-        </p>
-      )}
-    </div>
-  )
-}
-
 function Meta({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
@@ -203,8 +97,8 @@ const POLL_MS = 3_000
 
 /** Keyed on the route id so per-document state (like "gone from Drive") never leaks across documents. */
 export function DocumentView() {
-  const { id } = useParams()
-  return <DocumentBody key={id} id={Number(id)} />
+  const id = documentIdFromParam(useParams().id)
+  return <DocumentBody key={id} id={id} />
 }
 
 function DocumentBody({ id }: { id: number }) {
@@ -219,6 +113,20 @@ function DocumentBody({ id }: { id: number }) {
   const [picked, setPicked] = useState(0)
   const onMissing = useCallback(() => setGone(true), [])
   const fileId = doc.data?.source_file_id
+  // Old or hand-typed links (/documents/6, a stale name) settle on the readable one.
+  const navigate = useNavigate()
+  const location = useLocation()
+  const canonical = doc.data ? documentPath(id, doc.data.name) : null
+  useEffect(() => {
+    if (canonical && location.pathname !== canonical) {
+      navigate(`${canonical}${location.search}${location.hash}`, { replace: true })
+    }
+  }, [canonical, location.pathname, location.search, location.hash, navigate])
+  // PDFs open in the browser's viewer from the header, so there is no pane to notice a file
+  // gone from Drive: ask once (the body is not downloaded).
+  const isPdf = doc.data ? viewerKind(doc.data.mime_type, doc.data.name) === 'pdf' : false
+  const probe = useContent(fileId ?? 0, 'probe', isPdf && !doc.data?.file.missing_in_drive)
+  const pdfGone = probe.error instanceof ApiError && probe.error.status === 404
   const afterAction = () =>
     Promise.all([
       qc.invalidateQueries({ queryKey: keys.document(id) }),
@@ -240,7 +148,8 @@ function DocumentBody({ id }: { id: number }) {
 
   const d: DocumentDetail = doc.data
   const file = d.file
-  const missing = gone || file.missing_in_drive
+  const missing = gone || pdfGone || file.missing_in_drive
+  const showPane = !isPdf || missing
   const statement = (d.doc_type ?? '').toLowerCase() === 'statement'
   const canReextract = d.status === 'done' || d.status === 'needs_review'
   const driveUrl = `https://drive.google.com/file/d/${file.drive_file_id}/view`
@@ -271,6 +180,20 @@ function DocumentBody({ id }: { id: number }) {
                 Re-extract
               </Button>
             )}
+            {isPdf &&
+              (missing ? (
+                <Button size="sm" variant="outline" disabled>
+                  <FileText aria-hidden />
+                  Open PDF
+                </Button>
+              ) : (
+                <Button asChild size="sm" variant="outline">
+                  <a href={urls.fileContent(d.source_file_id)} target="_blank" rel="noopener noreferrer">
+                    <FileText aria-hidden />
+                    Open PDF
+                  </a>
+                </Button>
+              ))}
             {missing ? (
               <Button size="sm" variant="outline" disabled>
                 {driveLabel}
@@ -327,7 +250,7 @@ function DocumentBody({ id }: { id: number }) {
           <AlertDescription className="space-y-1">
             <p>
               The pages of this PDF are images with no text layer. This version doesn’t read scanned pages, so no
-              metadata, tables or common rows were extracted, and Simple search can’t find its contents.
+              metadata, tables or data points were extracted, and Simple search can’t find its contents.
             </p>
             <p>If you have a text PDF, CSV, .xlsx or email with the same figures, add it to the folder and it will be picked up within a minute.</p>
           </AlertDescription>
@@ -340,31 +263,25 @@ function DocumentBody({ id }: { id: number }) {
         </Alert>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SourceViewer
-          fileId={d.source_file_id}
-          mimeType={d.mime_type}
-          name={d.name}
-          path={d.path}
-          missing={missing}
-          onMissing={onMissing}
-        />
-        <Tabs defaultValue="printed" className="min-w-0">
-          <TabsList>
-            <TabsTrigger value="printed">
-              As printed <span className="text-xs tabular-nums text-muted-foreground">{d.tables.length}</span>
-            </TabsTrigger>
-            <TabsTrigger value="rows">
-              Common rows <span className="text-xs tabular-nums text-muted-foreground">{d.rows_total.toLocaleString('en-US')}</span>
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="printed">
-            <PrintedTables tables={d.tables} statement={statement} picked={picked} setPicked={setPicked} />
-          </TabsContent>
-          <TabsContent value="rows">
-            <CommonRows rows={d.rows} total={d.rows_total} documentId={d.id} statement={statement} />
-          </TabsContent>
-        </Tabs>
+      {/* A PDF has no in-page preview (it opens from the header), so the extraction takes the
+          full width; the pane stays when the file is gone, to say so. */}
+      <div className={cn('grid gap-4', showPane && 'lg:grid-cols-2')}>
+        {showPane && (
+          <SourceViewer
+            fileId={d.source_file_id}
+            mimeType={d.mime_type}
+            name={d.name}
+            path={d.path}
+            missing={missing}
+            onMissing={onMissing}
+          />
+        )}
+        <div className="min-w-0 space-y-3">
+          <h2 className="text-sm font-semibold">
+            Source tables <span className="text-xs font-normal tabular-nums text-muted-foreground">{d.tables.length}</span>
+          </h2>
+          <PrintedTables tables={d.tables} statement={statement} picked={picked} setPicked={setPicked} />
+        </div>
       </div>
     </section>
   )

@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { SearchX, Tag } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api, fundName, keys, useAnalyzeAnswer, useFindSearch, type AnalyzeResponse, type SearchHit } from '@/lib/api'
+import { documentPath } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 
 const NUMERIC = /^[+\-−(]?[$£€]?\d[\d,]*(\.\d+)?\s?(%|[kKmMbB]n?)?\)?$/
@@ -86,7 +88,7 @@ function SimilarPanel({ selected, isFirst, firstSimilar }: { selected: SearchHit
         <ul className="space-y-3">
           {items.map((h) => (
             <li key={h.document_id}>
-              <Link to={`/documents/${h.document_id}`} className="text-sm font-medium hover:underline">
+              <Link to={documentPath(h.document_id, h.file_name)} className="text-sm font-medium hover:underline">
                 {h.file_name}
               </Link>
               <HitMeta hit={h} />
@@ -123,7 +125,7 @@ function Find({ q }: { q: string }) {
             className={cn('rounded-lg border bg-card p-4', h.document_id === selected.document_id && 'ring-2 ring-primary/40')}
           >
             <div className="flex items-start justify-between gap-3">
-              <Link to={`/documents/${h.document_id}`} className="font-medium hover:underline">
+              <Link to={documentPath(h.document_id, h.file_name)} className="font-medium hover:underline">
                 {h.file_name}
               </Link>
               <button
@@ -185,21 +187,39 @@ function AnswerTable({ table }: { table: NonNullable<AnalyzeResponse['table']> }
   )
 }
 
+function TryAgain({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Button variant="outline" size="sm" onClick={onRetry}>
+      Try again
+    </Button>
+  )
+}
+
 function Analyze({ q }: { q: string }) {
   const answer = useAnalyzeAnswer(q)
-  if (answer.isPending)
+  const retry = () => void answer.refetch()
+  if (answer.isPending || answer.isFetching)
     return (
       <div className="space-y-3" role="status">
-        <p className="text-sm text-muted-foreground">Looking up your data (up to 5 lookups)</p>
+        <p className="text-sm text-muted-foreground">Looking up your data… this can take up to a minute.</p>
         <Skeleton className="h-5 w-2/3" />
         <Skeleton className="h-24 w-full" />
       </div>
     )
-  if (answer.isError) return <p role="alert" className="text-sm text-negative">Couldn't answer right now — try again.</p>
-  const { text, table, sources, steps } = answer.data
+  if (answer.isError)
+    return (
+      <div className="space-y-3">
+        <p role="alert" className="text-sm text-negative">
+          Couldn't answer right now — try again.
+        </p>
+        <TryAgain onRetry={retry} />
+      </div>
+    )
+  const { text, table, sources, steps, retryable } = answer.data
   return (
     <div className="space-y-5">
       <p className="whitespace-pre-wrap text-base">{text}</p>
+      {retryable && <TryAgain onRetry={retry} />}
       {table && <AnswerTable table={table} />}
       {sources.length > 0 && (
         <div>
@@ -208,7 +228,7 @@ function Analyze({ q }: { q: string }) {
             {sources.map((s) => (
               <li key={s.document_id}>
                 <Link
-                  to={`/documents/${s.document_id}`}
+                  to={documentPath(s.document_id, s.file_name)}
                   className="inline-block rounded-full border px-3 py-1 text-xs hover:bg-muted"
                 >
                   {s.file_name}

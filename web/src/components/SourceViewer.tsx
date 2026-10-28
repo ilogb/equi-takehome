@@ -1,10 +1,7 @@
 /** Left pane of the document view: the original file, streamed from Drive via /api/files/{id}/content. */
-import { lazy, Suspense, useEffect, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { ApiError, urls } from '@/lib/api'
 import { useContent } from '@/lib/fileContent'
-
-// react-pdf and pdf.js are heavy: load them only when a PDF is opened.
-const PdfPane = lazy(() => import('@/components/PdfPane'))
 
 export type ViewerKind = 'pdf' | 'csv' | 'frame' | 'spreadsheet' | 'other'
 
@@ -120,7 +117,7 @@ export function SourceViewer({
       <div className="space-y-3 p-6 text-sm">
         <p className="font-medium">No longer in Drive</p>
         <p className="text-muted-foreground">
-          This file was deleted or moved out of the folder, so it can’t be shown. The tables and common rows
+          This file was deleted or moved out of the folder, so it can’t be shown. The tables and data points
           extracted from it are kept and still used in Data and search.
         </p>
         <div>
@@ -129,14 +126,9 @@ export function SourceViewer({
         </div>
       </div>
     )
-  } else if (kind === 'pdf') body = (
-      <Suspense fallback={<Note>Loading…</Note>}>
-        <PdfPane fileId={fileId} onMissing={onMissing} />
-      </Suspense>
-    )
-  else if (kind === 'csv') body = <CsvPane fileId={fileId} onMissing={onMissing} />
+  } else if (kind === 'csv') body = <CsvPane fileId={fileId} onMissing={onMissing} />
   else if (kind === 'frame') body = <FramePane fileId={fileId} onMissing={onMissing} />
-  else if (kind === 'spreadsheet') body = <Note>Preview not available — see As printed.</Note>
+  else if (kind === 'spreadsheet') body = <Note>Preview not available — see Source tables.</Note>
   else body = <Note>Preview not available for this file type.</Note>
   return <div className="flex min-h-[480px] flex-col overflow-hidden rounded-xl border bg-background">{body}</div>
 }

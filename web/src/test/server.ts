@@ -15,6 +15,15 @@ export const handlers = [
       needs_reconnect: false,
     }),
   ),
+  http.get('/api/dashboard', () =>
+    HttpResponse.json({
+      documents: { total: 0, done: 0, needs_review: 0, failed: 0, processing: 0 },
+      figures: { total: 0, needs_review: 0, conflicts: 0 },
+      entities: { funds: 0, accounts: 0 },
+      one_year: [],
+      aum: [],
+    }),
+  ),
 ]
 
 export const server = setupServer(...handlers)

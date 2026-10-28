@@ -234,6 +234,16 @@ export interface AnalyzeResponse {
   table: AnalyzeTable | null
   sources: { document_id: number; file_name: string }[]
   steps: string[]
+  retryable?: boolean // the model was unavailable: the same question may work if asked again
+}
+
+/** Library dashboard summary. Decimal values are strings; returns are fractions (0.1032 = 10.32%). */
+export interface Dashboard {
+  documents: { total: number; done: number; needs_review: number; failed: number; processing: number }
+  figures: { total: number; needs_review: number; conflicts: number }
+  entities: { funds: number; accounts: number }
+  one_year: { entity: string; fund_id: number | null; period_end: string; return: string; benchmark: string | null }[]
+  aum: { entity: string; fund_id: number | null; period_end: string; value: string; currency: string | null }[]
 }
 
 // ---- fetchers ------------------------------------------------------------------------------
@@ -254,6 +264,7 @@ export const api = {
   rows: (f: RowsFilters = {}) => request<RowsPage>(`/api/rows${qs(f)}`),
   funds: () => request<Fund[]>('/api/funds'),
   meta: () => request<Meta>('/api/meta'),
+  dashboard: () => request<Dashboard>('/api/dashboard'),
   search: (q: string, limit = 20) => request<SearchResponse>(`/api/search${qs({ q, limit })}`),
   analyze: (question: string) =>
     request<AnalyzeResponse>('/api/analyze', { method: 'POST', body: JSON.stringify({ question }) }),
@@ -277,6 +288,7 @@ export const keys = {
   rows: (filters: RowsFilters) => ['rows', filters] as const,
   funds: ['funds'] as const,
   meta: ['meta'] as const,
+  dashboard: ['dashboard'] as const,
   search: (q: string) => ['search', q] as const,
   analyze: (question: string) => ['analyze', question] as const,
 }

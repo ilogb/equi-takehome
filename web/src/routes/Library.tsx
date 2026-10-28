@@ -4,11 +4,13 @@ import { ExternalLink, RefreshCw, Tag } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { FileTypeIcon } from '@/components/FileTypeIcon'
+import { LibraryDashboard } from '@/components/LibraryDashboard'
 import { FILE_STATUSES, StatusBadge, type FileStatus } from '@/components/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { api, ApiError, folderQuery, fundLabel, keys, urls, useSyncNow, type FileRow } from '@/lib/api'
 import { relativeTime } from '@/components/SyncPill'
+import { documentPath } from '@/lib/paths'
 import { cn } from '@/lib/utils'
 
 const POLL_MS = 5_000
@@ -50,7 +52,7 @@ function FileRowView({ f, onOpen }: { f: FileRow; onOpen: (() => void) | null })
           <div className="min-w-0 space-y-0.5">
             {f.document_id != null ? (
               <Link
-                to={`/documents/${f.document_id}`}
+                to={documentPath(f.document_id, f.name)}
                 className="font-medium hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -138,6 +140,7 @@ export function Library() {
       pending || q.state.data?.some((r) => r.status === 'queued' || r.status === 'processing') ? POLL_MS : false,
   })
   const sync = useSyncNow()
+  const openDocument = (id: number, name: string) => () => navigate(documentPath(id, name))
   const folderFailed = folder.isError && !noFolder
   const needsReconnect = folder.data?.needs_reconnect ?? false
   const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0)
@@ -205,6 +208,8 @@ export function Library() {
         </p>
       )}
 
+      {total > 0 && <LibraryDashboard />}
+
       {total > 0 && (
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by status">
           <Button
@@ -238,8 +243,8 @@ export function Library() {
         <table className="w-full min-w-[1100px] border-collapse text-sm">
           <thead>
             <tr className="border-b text-left text-xs text-muted-foreground">
-              {['File', 'Doc type', 'Manager', 'Fund or account', 'As of', 'Rows', 'Status', 'Synced'].map((h) => (
-                <th key={h} scope="col" className={cn('px-3 py-2 font-medium', h === 'Rows' && 'text-right')}>
+              {['File', 'Doc type', 'Manager', 'Fund or account', 'As of', 'Data points', 'Status', 'Synced'].map((h) => (
+                <th key={h} scope="col" className={cn('px-3 py-2 font-medium', h === 'Data points' && 'text-right')}>
                   {h}
                 </th>
               ))}
@@ -250,7 +255,7 @@ export function Library() {
               <FileRowView
                 key={f.id}
                 f={f}
-                onOpen={f.document_id != null ? () => navigate(`/documents/${f.document_id}`) : null}
+                onOpen={f.document_id != null ? openDocument(f.document_id, f.name) : null}
               />
             ))}
             {files.isSuccess && rows.length === 0 && !folderFailed && (

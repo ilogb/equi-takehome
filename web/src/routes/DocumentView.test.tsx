@@ -8,18 +8,6 @@ import { QueryProvider } from '@/QueryProvider'
 import { server } from '@/test/server'
 import { DocumentView } from './DocumentView'
 
-vi.mock('react-pdf', async () => {
-  const React = await import('react')
-  return {
-    pdfjs: { GlobalWorkerOptions: {} },
-    Document: ({ file, onLoadSuccess, children }: { file: { data: ArrayBuffer }; onLoadSuccess: (d: { numPages: number }) => void; children: React.ReactNode }) => {
-      React.useEffect(() => onLoadSuccess({ numPages: 4 }), [onLoadSuccess])
-      return <div data-testid="pdf" data-bytes={file.data.byteLength}>{children}</div>
-    },
-    Page: ({ pageNumber }: { pageNumber: number }) => <div data-testid="pdf-page">page {pageNumber}</div>,
-  }
-})
-
 const row = (over: object = {}) => ({
   id: 1,
   document_id: 5,
@@ -115,9 +103,15 @@ function renderView(start = '/documents/5') {
           <Route path="/library" element={<div>library page</div>} />
           <Route path="/data" element={<DataPage />} />
         </Routes>
+        <Here />
       </QueryProvider>
     </MemoryRouter>,
   )
+}
+
+function Here() {
+  const l = useLocation()
+  return <div data-testid="here">{l.pathname + l.search}</div>
 }
 
 describe('D1 done PDF', () => {
@@ -130,9 +124,14 @@ describe('D1 done PDF', () => {
     expect(screen.getByText('2026-08-31')).toBeInTheDocument()
     expect(screen.getByText('managed futures')).toBeInTheDocument()
     expect(screen.getByText('Done')).toBeInTheDocument()
-    const pdf = await screen.findByTestId('pdf')
-    expect(pdf).toHaveAttribute('data-bytes', '3')
-    expect(await screen.findByText(/page 1 of 4/i)).toBeInTheDocument()
+    const open = await screen.findByRole('link', { name: 'Open PDF' })
+    expect(open).toHaveAttribute('href', '/api/files/9/content')
+    expect(open).toHaveAttribute('target', '_blank')
+    // Data points live in Data, not here: the page shows the source tables only.
+    expect(screen.getByRole('heading', { name: /^source tables/i })).toBeInTheDocument()
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    // A PDF has no in-page preview pane: the extraction gets the full width.
+    expect(screen.queryByText(/opens in your browser/i)).not.toBeInTheDocument()
   })
 
   it('As printed has a per-table picker', async () => {
@@ -147,20 +146,6 @@ describe('D1 done PDF', () => {
     expect(screen.queryByRole('columnheader', { name: 'Jan' })).not.toBeInTheDocument()
   })
 
-  it('Common rows shows formatted values, printed-as text and markers', async () => {
-    const user = userEvent.setup()
-    use(doc())
-    renderView()
-    await user.click(await screen.findByRole('tab', { name: /common rows/i }))
-    expect(screen.getByText('+8.42%')).toBeInTheDocument()
-    expect(screen.getByText('−3.75%')).toBeInTheDocument()
-    expect(screen.getByText('(3.75%)')).toBeInTheDocument()
-    expect(screen.getByText('$24,963,108.45')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /needs review: footnote 2 says restated/i })).toBeInTheDocument()
-    expect(screen.getAllByRole('img', { name: 'Sources differ' })).toHaveLength(2)
-    expect(screen.getByText('Jan 2026')).toBeInTheDocument()
-  })
-
   it('Re-extract posts and reports', async () => {
     const user = userEvent.setup()
     use(doc())
@@ -173,14 +158,11 @@ describe('D1 done PDF', () => {
 })
 
 describe('D2 needs review', () => {
-  it('explains the markers in the Common rows tab', async () => {
-    const user = userEvent.setup()
+  it('shows the status and keeps Re-extract available', async () => {
     use(doc({ status: 'needs_review' }))
     renderView()
     expect(await screen.findByText('Needs review')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /re-extract/i })).toBeEnabled()
-    await user.click(screen.getByRole('tab', { name: /common rows/i }))
-    expect(screen.getByText(/marks a value the extractor was not sure about/i)).toBeInTheDocument()
   })
 })
 
@@ -195,13 +177,12 @@ describe('D3 failed', () => {
     expect(screen.queryByRole('button', { name: /re-extract/i })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(posted).toBe(true))
-    expect(await screen.findByTestId('pdf')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Open PDF' })).toBeInTheDocument()
   })
 })
 
 describe('D4 statement', () => {
-  it('explains account measures and the holdings table', async () => {
-    const user = userEvent.setup()
+  it('explains the holdings table', async () => {
     use(
       doc({
         doc_type: 'Statement',
@@ -211,8 +192,6 @@ describe('D4 statement', () => {
     )
     renderView()
     expect(await screen.findByText(/per-holding gains are not fund returns/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('tab', { name: /common rows/i }))
-    expect(screen.getByText(/account value and account return are kept apart from fund returns/i)).toBeInTheDocument()
   })
 })
 
@@ -227,16 +206,14 @@ describe('D5 scanned', () => {
 
 describe('D6 no longer in Drive', () => {
   it('shows the last-known path, keeps tables, disables Re-extract', async () => {
-    const user = userEvent.setup()
     use(doc(), fileRow(), () => HttpResponse.json({ detail: 'No longer in Drive' }, { status: 404 }))
     renderView()
     expect(await screen.findByText('No longer in Drive')).toBeInTheDocument()
     expect(screen.getByText(/last known at/i)).toBeInTheDocument()
     expect(screen.getAllByText('Factsheets/man-ahl_factsheet_2026-08.pdf').length).toBeGreaterThan(0)
     await waitFor(() => expect(screen.getByRole('button', { name: /re-extract/i })).toBeDisabled())
+    expect(screen.getByRole('button', { name: 'Open PDF' })).toBeDisabled()
     expect(screen.getByRole('columnheader', { name: 'Jan' })).toBeInTheDocument()
-    await user.click(screen.getByRole('tab', { name: /common rows/i }))
-    expect(screen.getByText('+8.42%')).toBeInTheDocument()
   })
 })
 
@@ -270,19 +247,29 @@ describe('other kinds', () => {
 
 afterEach(() => vi.useRealTimers())
 
+describe('readable links', () => {
+  it('settles a bare id link on the readable one and keeps the query string', async () => {
+    use(doc())
+    renderView('/documents/5?tab=x')
+    await waitFor(() => expect(screen.getByTestId('here')).toHaveTextContent('/documents/5-man-ahl-factsheet-2026-08?tab=x'))
+    expect(screen.getByRole('heading', { name: 'man-ahl_factsheet_2026-08.pdf' })).toBeInTheDocument()
+  })
+
+  it('opens a readable link without redirecting, and corrects a stale name', async () => {
+    use(doc())
+    renderView('/documents/5-old-name')
+    await waitFor(() => expect(screen.getByTestId('here')).toHaveTextContent('/documents/5-man-ahl-factsheet-2026-08'))
+  })
+})
+
 describe('review fixes', () => {
-  it('links to Drive and keeps the picked table across tabs', async () => {
-    const user = userEvent.setup()
+  it('links to Drive', async () => {
     use(doc())
     renderView()
     const link = await screen.findByRole('link', { name: /open in google drive/i })
     expect(link).toHaveAttribute('href', 'https://drive.google.com/file/d/drv9/view')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
-    await user.click(await screen.findByRole('button', { name: /cumulative performance/i }))
-    await user.click(screen.getByRole('tab', { name: /common rows/i }))
-    await user.click(screen.getByRole('tab', { name: /as printed/i }))
-    expect(screen.getByRole('columnheader', { name: 'Return' })).toBeInTheDocument()
   })
 
   it('does not carry "gone" over to the next document', async () => {
@@ -304,7 +291,7 @@ describe('review fixes', () => {
     )
     expect((await screen.findAllByText('No longer in Drive')).length).toBeGreaterThan(0)
     await user.click(screen.getByRole('link', { name: 'next' }))
-    expect(await screen.findByTestId('pdf')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Open PDF' })).toBeInTheDocument()
     expect(screen.queryByText('No longer in Drive')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /re-extract/i })).toBeEnabled()
   })
@@ -345,8 +332,7 @@ describe('review fixes', () => {
 })
 
 describe('large documents', () => {
-  it('caps printed tables and common rows with a link to all rows in Data', async () => {
-    const user = userEvent.setup()
+  it('caps a long printed table', async () => {
     use(
       doc({
         funds: [{ name: 'TSP', share_class: 'G Fund' }],
@@ -368,21 +354,12 @@ describe('large documents', () => {
     expect(within(thead).getAllByRole('row')).toHaveLength(2)
     expect(within(thead).getByRole('columnheader', { name: 'USD' })).toBeInTheDocument()
     expect(screen.getByText('Showing first 200 of 5,846 rows.')).toBeInTheDocument()
-    const tab = screen.getByRole('tab', { name: /common rows/i })
-    expect(tab).toHaveTextContent('5,846')
-    await user.click(tab)
-    expect(screen.getByText(/Showing 4 of 5,846/)).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: /see all in data/i }))
-    expect(screen.getByTestId('data-url')).toHaveTextContent('/data?document_id=5')
   })
 
-  it('shows no cap notes when everything fits', async () => {
-    const user = userEvent.setup()
+  it('shows no cap note when everything fits', async () => {
     use(doc())
     renderView()
     await screen.findByRole('heading', { name: /man-ahl/ })
     expect(screen.queryByText(/showing first/i)).not.toBeInTheDocument()
-    await user.click(screen.getByRole('tab', { name: /common rows/i }))
-    expect(screen.queryByRole('link', { name: /see all in data/i })).not.toBeInTheDocument()
   })
 })

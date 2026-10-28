@@ -60,3 +60,16 @@ export function formatMoney(value: string | null | undefined, currency: string |
   // The sign comes from the rounded output, so "-0.001" shows as $0.00, not -$0.00.
   return value.trim().startsWith('-') && /[1-9]/.test(text) ? MINUS + text : text
 }
+
+/** "4500000000","EUR" -> "€4.5B". For headline display only: rounds through a float, unlike formatMoney. */
+export function formatMoneyCompact(value: string | null | undefined, currency: string | null | undefined): string {
+  if (value == null || !parseDecimal(value)) return DASH
+  const n = Number(value)
+  const compact = { notation: 'compact', maximumFractionDigits: 2 } as const
+  try {
+    if (currency) return new Intl.NumberFormat('en-US', { ...compact, style: 'currency', currency }).format(n)
+  } catch {
+    return `${new Intl.NumberFormat('en-US', compact).format(n)} ${currency}`
+  }
+  return new Intl.NumberFormat('en-US', compact).format(n)
+}
