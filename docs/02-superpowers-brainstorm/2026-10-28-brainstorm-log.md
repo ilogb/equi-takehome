@@ -481,3 +481,25 @@ for spec approval.
 hard parts first (Google OAuth + Drive sync, table extraction with OpenAI),
 then the implementation plan in `docs/03-implementation-plan/`, informed by
 the spike's findings.
+
+## After approval: Google app status revisited
+
+### Q34 — Testing mode instead of publishing (replaces Q30)
+**Context.** Publishing the OAuth app to Production needs a homepage URL and a
+privacy-policy URL on Google's Branding page. Google showed: "Valid app name,
+support email, homepage url, and privacy policy url are required for switching
+the app to external production mode."
+**User (verbatim).**
+> am i going to need to do the branding thing to run the cap rover backend , i
+> figured i would have the gitgub just point to my backend server for most of
+> it and leave the google auth thing local? Branding and stuff requires yes
+> from google and taht will take time
+**Claude's answer.** No. Testing mode works on CapRover as well as locally:
+register the CapRover callback URI and add reviewers as Test users (up to
+100). The cost is that sign-ins expire after 7 days, so the user clicks
+Reconnect. Publishing needs no Google review, only the branding URLs.
+Verification is the slow review, and it is not needed.
+**Outcome.** The OAuth app stays in **Testing mode** for both local and
+CapRover. A Reconnect banner covers the weekly expiry. Publishing is optional
+and deferred. This replaces Q30. The allowlist and test user is the user's
+account, imranbrown1@gmail.com.
