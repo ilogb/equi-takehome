@@ -125,7 +125,10 @@ KNOW is inside of a file."* Up to ~15 s for a correct answer is acceptable.
   chat, and embeddings. `OpenAIProvider` is the only implementation and the
   default. Model names come from config. Exact default model ids are fixed
   during the spike against OpenAI's current docs, not guessed here.
-- **Deployment (Q6):** CapRover, with one app each for `api`, `worker` and
+- **Deployment (Q6, Q32):** the user's existing CapRover server. The build
+  ships the CapRover config (`captain-definition` per app) and a deploy
+  section in the README; deploying and a smoke test against the live URL
+  happen together with the user as the last step. CapRover, with one app each for `api`, `worker` and
   `web`, and Postgres with pgvector as a CapRover app (Claude's call on the
   layout). Runs on the user's OpenAI key. Local runs use the reviewer's own
   key and Google OAuth client.
@@ -137,9 +140,13 @@ KNOW is inside of a file."* Up to ~15 s for a correct answer is acceptable.
   user in and grants Drive access (Q11). `drive.readonly` is needed because
   `drive.file` can't see files other people drop into the folder.
 - **Allowlist:** `ALLOWED_EMAILS` (comma-separated) in config. Anyone else
-  gets a "not on the list" page and nothing is stored. The Google OAuth app
-  stays in Testing mode with the same people added as test users. The README
-  explains both steps.
+  gets a "not on the list" page and nothing is stored.
+- **Google app status (Q30):** the OAuth app is published to Production
+  without verification, so refresh tokens don't expire after 7 days as they
+  do in Testing mode. Users see Google's "unverified app" warning once. The
+  spike confirms Google allows this with `drive.readonly`; if it doesn't, fall
+  back to Testing mode plus a Reconnect banner. The README explains the
+  setup.
 - **Session:** a signed, HTTP-only cookie. Google refresh tokens are stored
   Fernet-encrypted (Claude's call).
 - **Isolation:** every row (folder, file, document, table, common row, chunk,
@@ -271,9 +278,13 @@ Five surfaces (Q20), all scoped to the signed-in user:
    - **Ask:** the question goes to the Q&A loop (§9). The answer is text,
      optionally a data table, with links to source documents.
 
-**Layout variant: TBD — chosen from the mockup**
-(`2026-10-28-document-intelligence-mockup.html`), then recorded here with
-the reason.
+**Layout** (`2026-10-28-document-intelligence-mockup.html`):
+- **Search results: variant A (Q27).** The search box sits in the header on
+  every screen and opens its own results page with a URL, so Back returns to
+  an answer after opening a source document. Ask answers need the width for
+  ranked tables.
+- **Document view:** TBD (Q28).
+- **Data table:** TBD (Q29).
 
 ## 9. Ask: questions over the app's own APIs
 
@@ -320,9 +331,12 @@ needs_review) · `chunk` (document, kind, text, tsvector, embedding vector) ·
 - **Integration (v1 notes: "lean here with Docker"):** pytest against a real
   Postgres + pgvector container. Covers the pipeline end to end with recorded
   LLM responses, API filters and isolation between two users.
-- **Eval (Q16):** `make eval` runs the real provider over `fixtures/` and
-  scores against the `.truth.json` files, reporting precision and recall per
-  document and per measure. It also checks that the Harborline traps don't
+- **Eval (Q16, Q31):** `make eval` runs the real provider over `fixtures/`
+  and scores against the `.truth.json` files, reporting precision and recall
+  per document and per measure. It's a report with no pass mark. Recall uses
+  every truth file; precision only those not marked `partial`. A row matches
+  on normalised entity, share class, measure, period kind and period end,
+  with value tolerance 0.00005. It also checks that the Harborline traps don't
   leak into fund returns.
 - **E2E:** deferred (v1 notes: "if time permits").
 
@@ -363,5 +377,5 @@ needs_review) · `chunk` (document, kind, text, tsvector, embedding vector) ·
 
 ## 14. Open
 
-- Screen layout variant (§8), from the mockup.
+- Document view and Data table layout (§8, Q28–Q29).
 - Anything the builder check raises that only the user can answer.

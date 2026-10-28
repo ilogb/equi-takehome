@@ -184,7 +184,10 @@ KNOW is inside of a file."</em> Up to ~15 s for a correct answer is acceptable.<
   chat, and embeddings. <code>OpenAIProvider</code> is the only implementation and the
   default. Model names come from config. Exact default model ids are fixed
   during the spike against OpenAI's current docs, not guessed here.</li>
-<li><strong>Deployment <span class="qref">Q6</span>:</strong> CapRover, with one app each for <code>api</code>, <code>worker</code> and
+<li><strong>Deployment <span class="qref">Q6, Q32</span>:</strong> the user's existing CapRover server. The build
+  ships the CapRover config (<code>captain-definition</code> per app) and a deploy
+  section in the README; deploying and a smoke test against the live URL
+  happen together with the user as the last step. CapRover, with one app each for <code>api</code>, <code>worker</code> and
   <code>web</code>, and Postgres with pgvector as a CapRover app <span class="call">Claude's call on the
   layout</span>. Runs on the user's OpenAI key. Local runs use the reviewer's own
   key and Google OAuth client.</li>
@@ -196,9 +199,13 @@ KNOW is inside of a file."</em> Up to ~15 s for a correct answer is acceptable.<
   user in and grants Drive access <span class="qref">Q11</span>. <code>drive.readonly</code> is needed because
   <code>drive.file</code> can't see files other people drop into the folder.</li>
 <li><strong>Allowlist:</strong> <code>ALLOWED_EMAILS</code> (comma-separated) in config. Anyone else
-  gets a "not on the list" page and nothing is stored. The Google OAuth app
-  stays in Testing mode with the same people added as test users. The README
-  explains both steps.</li>
+  gets a "not on the list" page and nothing is stored.</li>
+<li><strong>Google app status <span class="qref">Q30</span>:</strong> the OAuth app is published to Production
+  without verification, so refresh tokens don't expire after 7 days as they
+  do in Testing mode. Users see Google's "unverified app" warning once. The
+  spike confirms Google allows this with <code>drive.readonly</code>; if it doesn't, fall
+  back to Testing mode plus a Reconnect banner. The README explains the
+  setup.</li>
 <li><strong>Session:</strong> a signed, HTTP-only cookie. Google refresh tokens are stored
   Fernet-encrypted <span class="call">Claude's call</span>.</li>
 <li><strong>Isolation:</strong> every row (folder, file, document, table, common row, chunk,
@@ -329,9 +336,13 @@ KNOW is inside of a file."</em> Up to ~15 s for a correct answer is acceptable.<
    - <strong>Ask:</strong> the question goes to the Q&amp;A loop (§9). The answer is text,
      optionally a data table, with links to source documents.</li>
 </ol>
-<p><strong>Layout variant: <mark class="tbd">TBD</mark> — chosen from the mockup</strong>
-(<code>2026-10-28-document-intelligence-mockup.html</code>), then recorded here with
-the reason.</p>
+<p><strong>Layout</strong> (<code>2026-10-28-document-intelligence-mockup.html</code>):
+- <strong>Search results: variant A <span class="qref">Q27</span>.</strong> The search box sits in the header on
+  every screen and opens its own results page with a URL, so Back returns to
+  an answer after opening a source document. Ask answers need the width for
+  ranked tables.
+- <strong>Document view:</strong> <mark class="tbd">TBD</mark> <span class="qref">Q28</span>.
+- <strong>Data table:</strong> <mark class="tbd">TBD</mark> <span class="qref">Q29</span>.</p>
 <h2 id="9-ask-questions-over-the-apps-own-apis">9. Ask: questions over the app's own APIs</h2>
 <ul>
 <li><strong>Tools are the app's own endpoints <span class="qref">Q7</span>.</strong> The read endpoints that Ask may
@@ -375,9 +386,12 @@ needs_review) · <code>chunk</code> (document, kind, text, tsvector, embedding v
 <li><strong>Integration (v1 notes: "lean here with Docker"):</strong> pytest against a real
   Postgres + pgvector container. Covers the pipeline end to end with recorded
   LLM responses, API filters and isolation between two users.</li>
-<li><strong>Eval <span class="qref">Q16</span>:</strong> <code>make eval</code> runs the real provider over <code>fixtures/</code> and
-  scores against the <code>.truth.json</code> files, reporting precision and recall per
-  document and per measure. It also checks that the Harborline traps don't
+<li><strong>Eval <span class="qref">Q16, Q31</span>:</strong> <code>make eval</code> runs the real provider over <code>fixtures/</code>
+  and scores against the <code>.truth.json</code> files, reporting precision and recall
+  per document and per measure. It's a report with no pass mark. Recall uses
+  every truth file; precision only those not marked <code>partial</code>. A row matches
+  on normalised entity, share class, measure, period kind and period end,
+  with value tolerance 0.00005. It also checks that the Harborline traps don't
   leak into fund returns.</li>
 <li><strong>E2E:</strong> deferred (v1 notes: "if time permits").</li>
 </ul>
@@ -418,7 +432,7 @@ needs_review) · <code>chunk</code> (document, kind, text, tsvector, embedding v
 </ol>
 <h2 id="14-open">14. Open</h2>
 <ul>
-<li>Screen layout variant (§8), from the mockup.</li>
+<li>Document view and Data table layout (§8, Q28–Q29).</li>
 <li>Anything the builder check raises that only the user can answer.</li>
 </ul></article>
 </div>

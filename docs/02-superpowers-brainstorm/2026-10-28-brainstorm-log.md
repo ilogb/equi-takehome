@@ -402,3 +402,40 @@ call in spec §13 #2.
 components copied into the repo), with TanStack Table for the Data table.
 The mockups are rebuilt with the same Tailwind classes and shadcn component
 markup, so what is approved looks like what gets built.
+
+## Round 7 (Q27–Q32): mockup decisions and builder-check questions
+
+*Asked inside the mockup page; the user pasted the copied answers back.*
+
+**Pasted answers (verbatim).**
+> Mockup answers
+> - Decision 1 · Where do results from the unified search box go?
+>   Answer: A: own results page
+> - Decision 2 · How do printed tables and common rows sit beside the file?
+>   Answer: (none)
+> - Decision 3 · What shape is the Data table?
+>   Answer: (none)
+> - Google keeps an app in Testing mode with drive.readonly, and sign-ins
+>   expire after about 7 days (to be confirmed in the spike). OK for the
+>   deployed demo?
+>   Answer: Production, unverified
+> - Is `make eval` just a report, or must extraction hit a target score?
+>   Answer: Report only
+> - CapRover: does the server already exist, and is deploying part of this
+>   build?
+>   Answer: Exists; ship config, deploy together at the end
+
+**Outcomes.**
+- **Q27 Search results (Decision 1):** variant A. The header search box opens
+  its own results page, with a URL (recommended).
+- **Q28 Document view (Decision 2):** unanswered; still open.
+- **Q29 Data table (Decision 3):** unanswered; still open.
+- **Q30 Google 7-day expiry:** the OAuth app is published to Production
+  without verification. Users see Google's "unverified app" warning, but
+  tokens don't expire weekly. The spike confirms this works with
+  `drive.readonly`. Recommendation (accept + document) overruled.
+- **Q31 `make eval`:** a report only, with no pass mark. Precision is counted
+  only on complete truth files (recommended).
+- **Q32 CapRover:** the server exists. The build ships the CapRover config
+  and README, and the app is deployed together with the user as the final
+  step (recommended).
