@@ -102,3 +102,29 @@ have a lot of other stuff there."
 
 **Outcome.** Gap 3 settled: **the user selects one folder**; the app ignores
 the rest of Drive. The table question and gaps 1, 2 and 4 are still open.
+
+## Q4 — Tables: as printed, or common rows?
+
+*Asked on the web page, with real tables from `fixtures/real/` (Man AHL grid,
+Fundsmith period row, UVic newest-first table) beside the same numbers as
+common rows.*
+
+**Question.** Which do you want: the tables as each manager printed them, the
+common rows, or both?
+
+**Options offered.** As printed · Common rows · Both.
+
+**Claude's recommendation.** Both: common rows answer the brief's headline
+question; the as-printed view is how a person checks them. Cost: two things
+stored per table.
+
+**User's answer (verbatim).** Choice: **Both**. (No extra text.)
+
+**User's reasoning (verbatim).**
+> I think as printed is nice to have for fund by fund search, question level.
+> The common rows are the insights that make the search more than a search.
+
+**Outcome.** Every extracted table is kept as printed (for per-fund browsing
+and search) **and** turned into common rows (fund · period · measure · value)
+that power the cross-fund table and questions. Each common row links back to
+its cell in the printed table.
