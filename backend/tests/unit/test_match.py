@@ -85,5 +85,43 @@ def test_every_truth_file_has_a_document_and_report_renders(tmp_path):
     assert len(fixtures_with_truth()) == 8
     llm = _recorded(tmp_path, "21.7%")
     res = evaluate_file(FIXTURES / "synthetic" / "harborline-custody_account-statement_2026-09.pdf", llm)
-    text = report([res], harborline_gain_leaks([res]), 1.0, (10, 5))
+    res.usage = {'gpt-6.1-sol': (1_000_000, 100_000)}
+    text = report([res], harborline_gain_leaks([res]), 1.0)
     assert "account_return" in text and "LEAK" in text and "1/4" in text
+    assert "$3.0000" in text
+
+
+def test_got_row_satisfies_at_most_one_truth_row():
+    a, b = truth(share_class="A Acc"), truth(share_class="I Acc")
+    assert match([a, b], [got(share_class=None)]).hits == 1
+
+
+def test_exact_share_class_preferred_over_blank():
+    a = truth(share_class="A Acc")
+    s = match([a, truth(share_class=None)], [got(share_class=None), got(share_class="A Acc")])
+    assert s.hits == 2
+
+
+def test_all_noise_entity_matches_nothing():
+    assert match([truth(entity="Fund")], [got(entity="Fundsmith Equity")]).hits == 0
+    assert match([truth()], [got(entity="Fund")]).hits == 0
+
+
+def test_estimate_cost_arithmetic():
+    from evals.run_eval import estimate_cost
+
+    assert estimate_cost({"gpt-6.1-sol": (1_000_000, 100_000)}) == Decimal(3)
+    assert estimate_cost({"gpt-6.1-terra": (500_000, 200_000), "text-embedding-3-small": (1_000_000, 0)}) == Decimal("1.52")
+    assert estimate_cost({"mystery": (1, 1)}) is None
+
+
+def test_exception_in_one_fixture_is_an_error_row_not_a_crash(tmp_path):
+    class Boom(FakeLLM):
+        def extract(self, **kw):
+            raise ValueError("bad pdf")
+
+    res = evaluate_file(FIXTURES / "synthetic" / "harborline-custody_account-statement_2026-09.pdf", Boom(tmp_path))
+    assert res.score is None and res.error.startswith("ValueError: bad pdf")
+    from evals.run_eval import report
+
+    assert "ERROR ValueError" in report([res], [], 1.0)

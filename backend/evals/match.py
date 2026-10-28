@@ -82,10 +82,18 @@ def _same(t: TruthRow, g: Got) -> bool:
         return False
     if abs(g.value - t.value) > TOLERANCE or month_end(g.period_end) != month_end(t.period_end):
         return False
-    if not _contains(_entity_tokens(t.entity), _entity_tokens(g.entity)):
+    te, ge = _entity_tokens(t.entity), _entity_tokens(g.entity)
+    if not te or not ge or not _contains(te, ge):  # an all-noise name must not match everything
         return False
     tc, gc = _class_tokens(t.share_class), _class_tokens(g.share_class)
     return not tc or not gc or _contains(tc, gc)
+
+
+def _best(t: TruthRow, got: list[Got], used: set[int]) -> int | None:
+    """Unused got row for ``t``, preferring an identical share class over a containment/blank match."""
+    candidates = [i for i, g in enumerate(got) if i not in used and _same(t, g)]
+    exact = [i for i in candidates if _class_tokens(got[i].share_class) == _class_tokens(t.share_class)]
+    return (exact or candidates or [None])[0]
 
 
 def match(truth: list[TruthRow], got: list[Got], *, partial: bool = False) -> Score:
@@ -93,7 +101,7 @@ def match(truth: list[TruthRow], got: list[Got], *, partial: bool = False) -> Sc
     misses: list[TruthRow] = []
     hits = 0
     for t in truth:
-        found = next((i for i, g in enumerate(got) if _same(t, g)), None)
+        found = _best(t, got, used)
         if found is None:
             misses.append(t)
             continue
