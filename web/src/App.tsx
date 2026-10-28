@@ -5,7 +5,7 @@ import { Connect } from '@/routes/Connect'
 import { Library } from '@/routes/Library'
 import { DocumentView } from '@/routes/DocumentView'
 import { DataTable } from '@/routes/DataTable'
-import { SearchPage } from '@/pages/Stub'
+import { SearchResults } from '@/routes/SearchResults'
 
 /** Shell for signed-in screens. A 401 from /api/auth/me sends the user to /connect. */
 export function RequireAuth() {
@@ -31,7 +31,7 @@ export default function App() {
         <Route path="/library" element={<Library />} />
         <Route path="/documents/:id" element={<DocumentView />} />
         <Route path="/data" element={<DataTable />} />
-        <Route path="/search" element={<SearchPage />} />
+        <Route path="/search" element={<SearchResults />} />
       </Route>
       <Route path="*" element={<Navigate to="/library" replace />} />
     </Routes>

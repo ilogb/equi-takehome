@@ -211,17 +211,16 @@ export interface SearchResponse {
   similar_for_first: SearchHit[]
 }
 
-/** Provisional until the Analyze endpoint lands. */
+/** Mirrors backend/app/analyze/loop.py. Table cells are already formatted strings. */
 export interface AnalyzeTable {
   columns: string[]
-  rows: (string | number | null)[][]
-  [key: string]: unknown
+  rows: string[][]
 }
 export interface AnalyzeResponse {
   text: string
   table: AnalyzeTable | null
   sources: { document_id: number; file_name: string }[]
-  steps: unknown[]
+  steps: string[]
 }
 
 // ---- fetchers ------------------------------------------------------------------------------
@@ -285,7 +284,18 @@ export const useFunds = () => useQuery({ queryKey: keys.funds, queryFn: api.fund
 export const useMeta = () => useQuery({ queryKey: keys.meta, queryFn: api.meta })
 export const useFindSearch = (q: string) =>
   useQuery({ queryKey: keys.search(q), queryFn: () => api.search(q), enabled: q.trim() !== '' })
-export const useAnalyze = () => useMutation({ mutationFn: api.analyze })
+/** One POST per question: the answer is cached for the session so Back never re-asks. */
+export const useAnalyzeAnswer = (question: string) =>
+  useQuery({
+    queryKey: keys.analyze(question),
+    queryFn: () => api.analyze(question),
+    enabled: question.trim() !== '',
+    staleTime: Infinity,
+    gcTime: 30 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
 
 export function useSyncNow() {
   const qc = useQueryClient()
