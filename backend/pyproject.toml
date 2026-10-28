@@ -43,3 +43,6 @@ line-length = 100
 select = ["E", "F", "I"]
 # Long lines are tolerated (tables, prompts); 100 is a target, not a gate.
 ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["alembic"]

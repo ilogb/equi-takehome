@@ -13,10 +13,13 @@ lives on the **web** app's domain.
 | `worker` | `captain-definition-worker` | No HTTP; same code, `python -m app.jobs.worker`. |
 | `web` | `captain-definition-web` | nginx on port 80; enable HTTPS. Env: `API_UPSTREAM=srv-captain--api:8000`. |
 
-Each definition is self-contained and builds from the repo root. CapRover reads a file
-named `captain-definition` at the root of the deployed tarball, so for each app:
-`cp deploy/caprover/captain-definition-<app> captain-definition`, deploy, then
-`git checkout`/remove the copy. 
+All three definitions use `dockerfilePath` and build from the repo root. `api` and `worker`
+use the same `backend/Dockerfile`; the worker app sets `APP_ROLE=worker`, which makes the
+image run `python -m app.jobs.worker` instead of migrations + uvicorn. In each app's
+Deployment tab (deploy from Git) set "Captain Definition Relative Path" to
+`deploy/caprover/captain-definition-<api|worker|web>`.
+
+**Deploy api before web**: nginx in `web` fails to start if the api host does not resolve.
 
 ## Env vars (api and worker)
 
@@ -30,6 +33,8 @@ SESSION_SECRET=...            # make keys
 FERNET_KEY=...                # make keys; same value on api and worker
 PUBLIC_BASE_URL=https://<web-app>.<root-domain>
 FRONTEND_URL=https://<web-app>.<root-domain>
+FORWARDED_ALLOW_IPS=*          # api only: trust CapRover's proxy headers (https scheme)
+# worker app only: APP_ROLE=worker
 ```
 
 ## Google client

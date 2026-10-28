@@ -1,0 +1,12 @@
+backend/.venv
+backend/tests
+backend/evals/out
+web/node_modules
+web/dist
+**/__pycache__
+.git
+.superpowers
+docs
+fixtures
+fixtures.zip
+.env
