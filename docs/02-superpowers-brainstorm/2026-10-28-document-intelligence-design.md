@@ -394,13 +394,14 @@ confirm: unverified Production OAuth with `drive.readonly`, and the default
 OpenAI model ids.
 
 
-## Spike amendments — UNAPPROVED (2026-10-28)
+## Spike amendments — approved by the user (2026-10-28)
 
 > Everything above this heading is the spec as approved. These amendments
 > come from the spike (`docs/03-implementation-plan/2026-10-28-spike-findings.md`,
 > §E, with live evidence in §A and §C) and from decisions made after approval
-> (Q34, Q35 and the port). Each one overrides the section it names. They need
-> the user's approval before the plan relies on them.
+> (Q34, Q35 and the port). Each one overrides the section it names. Approved by the user
+> ("yea I approve") after the extraction-model discussion; extraction stays
+> on `gpt-6.1-sol`.
 
 **A1 — Models (E1, confirmed live).** Extraction `gpt-6.1-sol` (Responses
 API, PDF as `input_file`, strict `json_schema`). CSV/`.xlsx` column mapping

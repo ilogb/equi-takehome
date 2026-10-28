@@ -517,3 +517,22 @@ folder. Sync keeps a cached list of descendant folder ids and checks a
 changed file's parents against it. The Library shows each file's path
 relative to the chosen folder. This goes into the spec amendments with the
 spike's E1–E9 and Q34.
+
+## Spike amendments A1–A12 and the extraction model
+
+### Q36 — Cheaper extraction model?
+**User (verbatim).**
+> for extraction should we use a cheaper slower model or you think stick with sol?
+**Claude's answer.** Stick with `gpt-6.1-sol`. Cost is already about $1–2
+per full fixture run; Sol is the model proven on the traps; extraction runs
+in the background, so speed is hidden. The model is a config value, and one
+`make eval` A/B with `gpt-6.1-terra` (about $0.50) decides whether to switch.
+**Outcome.** Sol stays the extraction default; Terra handles CSV mapping and
+Ask (A1 unchanged).
+
+### Approval of A1–A12
+**User (verbatim).**
+> alright did you build the plan?
+> yea I approve
+**Outcome.** Spec amendments A1–A12 are approved (tag `v2.1-amendments-approved`).
+The plan is written next.
