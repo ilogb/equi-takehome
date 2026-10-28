@@ -52,3 +52,14 @@ All need Postgres (`tests/integration/test_run.py`, `FakeDriveSource`, `FakeLLM`
 - `test_conflicts_marked_after_persist`: after two files with differing values for one identity are processed, `common_row.conflict` is true on both (`mark_conflicts` called).
 - `test_llm_error_propagates`: an `LLMError` from the LLM escapes `process_file` and leaves the file status unchanged.
 - `test_nul_text_persists`: a document whose text contained NUL persists without a Postgres error.
+
+## Task 10
+
+All need Postgres (`tests/integration/test_queue.py`, injected `now`). Backoff schedule, `next_state` (retryable vs non-retryable) and the claim predicate are unit-tested in `tests/unit/test_jobs.py`.
+
+- `test_enqueue_dedupes`: `enqueue(file_id)` twice returns a `Job` then `None` (one job row); with `force=True` a second job is created; after the first job is `done`, `enqueue` returns a new job. The file status is `queued`.
+- `test_claim_skip_locked`: with two queued jobs, two sessions that each `claim` before committing get different jobs; a third claim returns `None`. Claimed jobs are `running`, `lease_until == now + 15 min`, `attempts == 1`, and the file is `processing`.
+- `test_backoff_then_failed`: a retryable `LLMError` via `fail` after each claim sets `run_after` to now +30 s, +120 s, +600 s with job `queued` and file `queued`; the fourth failure sets job and file `failed` with `last_error`/`error` text. A job with `run_after` in the future is not claimed.
+- `test_non_retryable_fails_immediately`: `fail` with `LLMError(retryable=False)` (and `PermanentError`) on attempt 1 sets job `failed` and file `failed` with the error text.
+- `test_expired_lease_is_reclaimed`: a `running` job with `lease_until` in the past is claimed again (attempts incremented); one with `lease_until` in the future is not.
+- `test_process_one_marks_done`: with `FakeDriveSource`/`FakeLLM`, `process_one` on a queued job leaves the job `done`; with `source_for` raising `PermanentError`, job and file end `failed` and the worker returns `True`.
