@@ -1,6 +1,6 @@
 /** /library: every synced file with status, metadata, tags and path; sync controls and reconnect handling (L1-L4). */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Tag } from 'lucide-react'
+import { ExternalLink, RefreshCw, Tag } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { FileTypeIcon } from '@/components/FileTypeIcon'
@@ -32,7 +32,7 @@ function parentPath(path: string): string {
   return i < 0 ? '' : path.slice(0, i)
 }
 
-function FileRowView({ f, onOpen }: { f: FileRow; onOpen: () => void }) {
+function FileRowView({ f, onOpen }: { f: FileRow; onOpen: (() => void) | null }) {
   const qc = useQueryClient()
   const retry = useMutation({
     mutationFn: () => api.retryFile(f.id),
@@ -43,18 +43,22 @@ function FileRowView({ f, onOpen }: { f: FileRow; onOpen: () => void }) {
   })
   const dir = parentPath(f.path)
   return (
-    <tr className="cursor-pointer border-b align-top hover:bg-muted/40" onClick={onOpen}>
+    <tr className={cn('border-b align-top hover:bg-muted/40', onOpen && 'cursor-pointer')} onClick={onOpen ?? undefined}>
       <td className="px-3 py-2.5">
         <div className="flex min-w-0 items-start gap-2">
           <FileTypeIcon kind={f.kind} className="mt-0.5" />
           <div className="min-w-0 space-y-0.5">
-            <Link
-              to={`/documents/${f.id}`}
-              className="font-medium hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {f.name}
-            </Link>
+            {f.document_id != null ? (
+              <Link
+                to={`/documents/${f.document_id}`}
+                className="font-medium hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {f.name}
+              </Link>
+            ) : (
+              <span className="font-medium">{f.name}</span>
+            )}
             {dir && <div className="text-xs text-muted-foreground">{dir}</div>}
             {f.status === 'failed' && f.error && <div className="text-xs text-negative">{f.error}</div>}
             {f.tags.length > 0 && (
@@ -177,6 +181,18 @@ export function Library() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {folder.data && (
+            <Button asChild size="sm" variant="outline">
+              <a
+                href={`https://drive.google.com/drive/folders/${folder.data.drive_folder_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink aria-hidden />
+                Open folder in Drive
+              </a>
+            </Button>
+          )}
           <Button size="sm" disabled={syncDisabled} onClick={() => sync.mutate()}>
             <RefreshCw className={cn(pending && 'animate-spin')} aria-hidden />
             Sync now
@@ -231,7 +247,11 @@ export function Library() {
           </thead>
           <tbody>
             {rows.map((f) => (
-              <FileRowView key={f.id} f={f} onOpen={() => navigate(`/documents/${f.id}`)} />
+              <FileRowView
+                key={f.id}
+                f={f}
+                onOpen={f.document_id != null ? () => navigate(`/documents/${f.document_id}`) : null}
+              />
             ))}
             {files.isSuccess && rows.length === 0 && !folderFailed && (
               <tr>

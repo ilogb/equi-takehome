@@ -51,6 +51,7 @@ export interface Me {
 
 export interface FolderStatus {
   name: string
+  drive_folder_id: string
   last_synced_at: string | null
   last_error: string | null
   counts_by_status: Partial<Record<FileStatus, number>>
@@ -64,6 +65,8 @@ export interface DriveFolder {
 
 export interface FileRow {
   id: number
+  document_id: number | null
+  drive_file_id: string
   name: string
   path: string
   mime_type: string
@@ -115,6 +118,18 @@ export interface DocumentTable {
   rows: string[][]
 }
 
+export interface DocumentFile {
+  id: number
+  status: FileStatus
+  error: string | null
+  missing_in_drive: boolean
+  mime_type: string
+  kind: FileKind
+  path: string
+  name: string
+  drive_file_id: string
+}
+
 export interface DocumentDetail {
   id: number
   source_file_id: number
@@ -128,7 +143,8 @@ export interface DocumentDetail {
   currency: string | null
   summary: string | null
   tags: string[]
-  funds: string[]
+  funds: HitFund[]
+  file: DocumentFile
   tables: DocumentTable[]
   rows: DataRow[]
 }

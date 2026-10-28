@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
+import { act } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QueryProvider } from '@/QueryProvider'
 import { server } from '@/test/server'
 import { DocumentView } from './DocumentView'
@@ -59,6 +60,7 @@ const doc = (over: object = {}) => ({
   summary: null,
   tags: ['managed futures'],
   funds: ['Man AHL Diversified'],
+  file: fileRow(),
   tables: [
     { index: 0, title: 'Historical Performance', header: ['Year', 'Jan'], rows: [['2026', '8.42%']] },
     { index: 1, title: 'Cumulative Performance', header: ['Period', 'Return'], rows: [['1y', '9.10%']] },
@@ -72,36 +74,31 @@ const doc = (over: object = {}) => ({
   ...over,
 })
 
-const fileRow = (over: object = {}) => ({
-  id: 9,
-  name: 'man-ahl_factsheet_2026-08.pdf',
-  path: 'Factsheets/man-ahl_factsheet_2026-08.pdf',
-  mime_type: 'application/pdf',
-  kind: 'pdf',
-  status: 'done',
-  error: null,
-  missing_in_drive: false,
-  doc_type: 'Factsheet',
-  manager: 'Man AHL',
-  funds: [],
-  as_of_date: null,
-  tags: [],
-  row_count: 4,
-  updated_at: '2026-10-28T10:42:00Z',
-  ...over,
-})
+function fileRow(over: object = {}) {
+  return {
+    id: 9,
+    name: 'man-ahl_factsheet_2026-08.pdf',
+    path: 'Factsheets/man-ahl_factsheet_2026-08.pdf',
+    mime_type: 'application/pdf',
+    kind: 'pdf',
+    status: 'done',
+    error: null,
+    missing_in_drive: false,
+    drive_file_id: 'drv9',
+    ...over,
+  }
+}
 
-function use(d: object, f: object = fileRow(), content?: () => Response) {
+function use(d: object, f: object = {}, content?: () => Response) {
   server.use(
-    http.get('/api/documents/5', () => HttpResponse.json(d)),
-    http.get('/api/files', () => HttpResponse.json([f])),
+    http.get('/api/documents/5', () => HttpResponse.json({ ...d, file: { ...(d as { file: object }).file, ...f } })),
     http.get('/api/files/9/content', content ?? (() => new HttpResponse(new Uint8Array([1, 2, 3]), { headers: { 'Content-Type': 'application/pdf' } }))),
   )
 }
 
-function renderView() {
+function renderView(start = '/documents/5') {
   return render(
-    <MemoryRouter initialEntries={['/documents/5']}>
+    <MemoryRouter initialEntries={[start]}>
       <QueryProvider retry={false}>
         <Routes>
           <Route path="/documents/:id" element={<DocumentView />} />
@@ -257,5 +254,81 @@ describe('other kinds', () => {
     use(doc({ mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', name: 'a.xlsx' }), fileRow({ kind: 'spreadsheet' }))
     renderView()
     expect(await screen.findByText(/preview not available/i)).toBeInTheDocument()
+  })
+})
+
+afterEach(() => vi.useRealTimers())
+
+describe('review fixes', () => {
+  it('links to Drive and keeps the picked table across tabs', async () => {
+    const user = userEvent.setup()
+    use(doc())
+    renderView()
+    const link = await screen.findByRole('link', { name: /open in google drive/i })
+    expect(link).toHaveAttribute('href', 'https://drive.google.com/file/d/drv9/view')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    await user.click(await screen.findByRole('button', { name: /cumulative performance/i }))
+    await user.click(screen.getByRole('tab', { name: /common rows/i }))
+    await user.click(screen.getByRole('tab', { name: /as printed/i }))
+    expect(screen.getByRole('columnheader', { name: 'Return' })).toBeInTheDocument()
+  })
+
+  it('does not carry "gone" over to the next document', async () => {
+    server.use(
+      http.get('/api/documents/5', () => HttpResponse.json(doc())),
+      http.get('/api/documents/6', () => HttpResponse.json(doc({ id: 6, source_file_id: 10, file: fileRow({ id: 10 }) }))),
+      http.get('/api/files/9/content', () => HttpResponse.json({ detail: 'No longer in Drive' }, { status: 404 })),
+      http.get('/api/files/10/content', () => new HttpResponse(new Uint8Array([1]), { headers: { 'Content-Type': 'application/pdf' } })),
+    )
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/documents/5']}>
+        <QueryProvider retry={false}>
+          <Routes>
+            <Route path="/documents/:id" element={<><DocumentView /><Link to="/documents/6">next</Link></>} />
+          </Routes>
+        </QueryProvider>
+      </MemoryRouter>,
+    )
+    expect((await screen.findAllByText('No longer in Drive')).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('link', { name: 'next' }))
+    expect(await screen.findByTestId('pdf')).toBeInTheDocument()
+    expect(screen.queryByText('No longer in Drive')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /re-extract/i })).toBeEnabled()
+  })
+
+  it('polls every 3 s while queued, then stops; Re-extract cannot be double-posted', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    let status = 'done'
+    let posts = 0
+    let gets = 0
+    server.use(
+      http.get('/api/documents/5', () => {
+        gets++
+        return HttpResponse.json(doc({ status, file: fileRow({ status }) }))
+      }),
+      http.get('/api/files/9/content', () => new HttpResponse(new Uint8Array([1]), { headers: { 'Content-Type': 'application/pdf' } })),
+      http.post('/api/files/9/reextract', () => {
+        posts++
+        status = 'queued'
+        return HttpResponse.json({ id: 9, status })
+      }),
+    )
+    renderView()
+    const btn = await screen.findByRole('button', { name: /re-extract/i })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    await user.click(btn)
+    await user.click(btn)
+    expect(await screen.findByText('Queued')).toBeInTheDocument()
+    expect(posts).toBe(1)
+    const before = gets
+    status = 'done'
+    await act(async () => { await vi.advanceTimersByTimeAsync(3100) })
+    await waitFor(() => expect(screen.getByText('Done')).toBeInTheDocument())
+    expect(gets).toBeGreaterThan(before)
+    const settled = gets
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000) })
+    expect(gets).toBe(settled)
   })
 })

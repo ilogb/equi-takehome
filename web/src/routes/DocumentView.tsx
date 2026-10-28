@@ -1,16 +1,16 @@
 /** /documents/:id: the source file beside tabbed extraction (As printed, Common rows). States D1-D6. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, RefreshCw, Tag } from 'lucide-react'
+import { ChevronLeft, ExternalLink, RefreshCw, Tag } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DiffMarker, ReviewMarker } from '@/components/Markers'
 import { SourceViewer } from '@/components/SourceViewer'
-import { FileTypeIcon, type FileKind } from '@/components/FileTypeIcon'
+import { FileTypeIcon } from '@/components/FileTypeIcon'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { api, keys, type DataRow, type DocumentDetail, type DocumentTable } from '@/lib/api'
+import { api, keys, type DataRow, type HitFund, type DocumentDetail, type DocumentTable } from '@/lib/api'
 import { formatMoney, formatPercent } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -25,15 +25,6 @@ const MEASURE_LABEL: Record<string, string> = {
   account_return: 'Account return',
 }
 
-function kindForIcon(mime: string, name: string): FileKind {
-  const n = name.toLowerCase()
-  if (mime === 'application/pdf' || n.endsWith('.pdf')) return 'pdf'
-  if (n.endsWith('.csv')) return 'csv'
-  if (n.endsWith('.xlsx') || n.endsWith('.xls')) return 'spreadsheet'
-  if (/\.(html?|eml)$/.test(n)) return 'html'
-  return 'other'
-}
-
 function periodLabel(r: DataRow): string {
   const [y, m] = r.period_end.split('-')
   if (r.period_kind === 'month') return `${MONTHS[Number(m) - 1]} ${y}`
@@ -46,8 +37,17 @@ function valueText(r: DataRow): string {
   return r.value.trim().startsWith('-') || /^[+]?0*\.?0*$/.test(r.value.trim()) ? text : `+${text}`
 }
 
-function PrintedTables({ tables, statement }: { tables: DocumentTable[]; statement: boolean }) {
-  const [picked, setPicked] = useState(0)
+function PrintedTables({
+  tables,
+  statement,
+  picked,
+  setPicked,
+}: {
+  tables: DocumentTable[]
+  statement: boolean
+  picked: number
+  setPicked: (i: number) => void
+}) {
   if (tables.length === 0) return <p className="text-sm text-muted-foreground">No tables were extracted from this file.</p>
   const t = tables.find((x) => x.index === picked) ?? tables[0]
   const holdings = statement && /holding/i.test(t.title ?? '')
@@ -173,20 +173,37 @@ function Meta({ label, value }: { label: string; value: string | null | undefine
   )
 }
 
+const PENDING = new Set(['queued', 'processing'])
+const POLL_MS = 3_000
+
+function fundName(f: HitFund): string {
+  return typeof f === 'string' ? f : f.name
+}
+
+/** Keyed on the route id so per-document state (like "gone from Drive") never leaks across documents. */
 export function DocumentView() {
-  const id = Number(useParams().id)
+  const { id } = useParams()
+  return <DocumentBody key={id} id={Number(id)} />
+}
+
+function DocumentBody({ id }: { id: number }) {
   const qc = useQueryClient()
-  const doc = useQuery({ queryKey: keys.document(id), queryFn: () => api.document(id), enabled: Number.isFinite(id) })
-  // The detail has no error text or Drive flag; the file list does.
-  const files = useQuery({ queryKey: keys.files({}), queryFn: () => api.files({}) })
+  const doc = useQuery({
+    queryKey: keys.document(id),
+    queryFn: () => api.document(id),
+    enabled: Number.isFinite(id),
+    refetchInterval: (q) => (q.state.data && PENDING.has(q.state.data.file.status) ? POLL_MS : false),
+  })
   const [gone, setGone] = useState(false)
+  const [picked, setPicked] = useState(0)
   const onMissing = useCallback(() => setGone(true), [])
   const fileId = doc.data?.source_file_id
-  const afterAction = () => {
-    void qc.invalidateQueries({ queryKey: keys.document(id) })
-    void qc.invalidateQueries({ queryKey: ['files'] })
-    void qc.invalidateQueries({ queryKey: keys.folder })
-  }
+  const afterAction = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: keys.document(id) }),
+      qc.invalidateQueries({ queryKey: ['files'] }),
+      qc.invalidateQueries({ queryKey: keys.folder }),
+    ])
   const reextract = useMutation({ mutationFn: () => api.reextractFile(fileId!), onSuccess: afterAction })
   const retry = useMutation({ mutationFn: () => api.retryFile(fileId!), onSuccess: afterAction })
 
@@ -201,10 +218,17 @@ export function DocumentView() {
   if (!doc.data) return <p className="p-8 text-sm text-muted-foreground">Loading…</p>
 
   const d: DocumentDetail = doc.data
-  const file = files.data?.find((f) => f.id === d.source_file_id)
-  const missing = gone || (file?.missing_in_drive ?? false)
+  const file = d.file
+  const missing = gone || file.missing_in_drive
   const statement = (d.doc_type ?? '').toLowerCase() === 'statement'
   const canReextract = d.status === 'done' || d.status === 'needs_review'
+  const driveUrl = `https://drive.google.com/file/d/${file.drive_file_id}/view`
+  const driveLabel = (
+    <>
+      <ExternalLink aria-hidden />
+      Open in Google Drive
+    </>
+  )
 
   return (
     <section className="mx-auto max-w-[1480px] space-y-4 px-4 py-6">
@@ -215,22 +239,34 @@ export function DocumentView() {
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <FileTypeIcon kind={kindForIcon(d.mime_type, d.name)} />
+            <FileTypeIcon kind={file.kind} />
             <h1 className="truncate text-xl font-semibold tracking-tight">{d.name}</h1>
             <StatusBadge status={d.status} />
           </div>
-          {canReextract && (
-            <Button size="sm" variant="outline" disabled={missing || reextract.isPending} onClick={() => reextract.mutate()}>
-              <RefreshCw aria-hidden />
-              Re-extract
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canReextract && (
+              <Button size="sm" variant="outline" disabled={missing || reextract.isPending} onClick={() => reextract.mutate()}>
+                <RefreshCw aria-hidden />
+                Re-extract
+              </Button>
+            )}
+            {missing ? (
+              <Button size="sm" variant="outline" disabled>
+                {driveLabel}
+              </Button>
+            ) : (
+              <Button asChild size="sm" variant="outline">
+                <a href={driveUrl} target="_blank" rel="noopener noreferrer">
+                  {driveLabel}
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
         {reextract.isError && <p role="alert" className="text-sm text-negative">Could not start re-extraction. Try again.</p>}
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-5">
           <Meta label="Doc type" value={d.doc_type} />
           <Meta label="Manager" value={d.manager} />
-          <Meta label="Fund" value={null} />
           <Meta label="As of" value={d.as_of_date} />
           <Meta label="Currency" value={d.currency} />
           <Meta label="Path" value={d.path} />
@@ -238,7 +274,7 @@ export function DocumentView() {
         {d.funds.length > 0 && (
           <ul className="flex flex-wrap gap-x-4 text-sm">
             {d.funds.map((f) => (
-              <li key={typeof f === 'string' ? f : JSON.stringify(f)}>{typeof f === 'string' ? f : (f as { name: string }).name}</li>
+              <li key={fundName(f)}>{fundName(f)}</li>
             ))}
           </ul>
         )}
@@ -256,7 +292,7 @@ export function DocumentView() {
         <Alert variant="destructive">
           <AlertTitle>Extraction failed</AlertTitle>
           <AlertDescription className="space-y-2">
-            <p>{file?.error ?? 'The file could not be processed.'}</p>
+            <p>{file.error ?? 'The file could not be processed.'}</p>
             <Button size="sm" variant="destructive" disabled={retry.isPending} onClick={() => retry.mutate()}>
               Retry
             </Button>
@@ -279,7 +315,7 @@ export function DocumentView() {
       {d.status === 'unsupported' && (
         <Alert>
           <AlertTitle>Unsupported</AlertTitle>
-          <AlertDescription>{file?.error ?? 'This file is not supported, so nothing was extracted.'}</AlertDescription>
+          <AlertDescription>{file.error ?? 'This file is not supported, so nothing was extracted.'}</AlertDescription>
         </Alert>
       )}
 
@@ -302,7 +338,7 @@ export function DocumentView() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="printed">
-            <PrintedTables tables={d.tables} statement={statement} />
+            <PrintedTables tables={d.tables} statement={statement} picked={picked} setPicked={setPicked} />
           </TabsContent>
           <TabsContent value="rows">
             <CommonRows rows={d.rows} statement={statement} />

@@ -11,6 +11,8 @@ const NOW = new Date('2026-10-28T10:50:00Z')
 
 const file = (over: object = {}) => ({
   id: 1,
+  document_id: 11,
+  drive_file_id: 'drv1',
   name: 'fundsmith_factsheet_2026-08.pdf',
   path: 'Factsheets/fundsmith_factsheet_2026-08.pdf',
   mime_type: 'application/pdf',
@@ -30,6 +32,7 @@ const file = (over: object = {}) => ({
 
 const folder = (counts: Record<string, number>, over: object = {}) => ({
   name: 'Fund documents',
+  drive_folder_id: 'fold1',
   last_synced_at: '2026-10-28T10:49:00Z',
   last_error: null,
   counts_by_status: counts,
@@ -93,15 +96,26 @@ describe('L1 default', () => {
     expect(r.getByText('Done')).toBeInTheDocument()
     expect(r.getByText('8 min ago')).toHaveAttribute('title', expect.stringContaining('2026'))
     expect(screen.getByText('Scanned: no text', { selector: 'span' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /open folder in drive/i })).not.toBeInTheDocument()
+    const open = screen.getByRole('link', { name: /open folder in drive/i })
+    expect(open).toHaveAttribute('href', 'https://drive.google.com/drive/folders/fold1')
+    expect(open).toHaveAttribute('target', '_blank')
+    expect(open).toHaveAttribute('rel', expect.stringContaining('noopener'))
     expect(screen.getByRole('button', { name: /sync now/i })).toBeEnabled()
   })
 
   it('navigates to the document on row click', async () => {
-    use([file({ id: 7 })])
+    use([file({ id: 7, document_id: 70 })])
     renderLibrary()
     await userEvent.click(await screen.findByText('Fundsmith Equity Fund'))
-    expect(screen.getByTestId('where')).toHaveTextContent('/documents/7')
+    expect(screen.getByTestId('where')).toHaveTextContent('/documents/70')
+  })
+
+  it('has no link for a file without a document, but keeps its error and Retry', async () => {
+    use([file({ id: 8, document_id: null, name: 'bad.pdf', status: 'failed', error: 'boom' })], folder({ failed: 1 }))
+    renderLibrary()
+    expect(await screen.findByText('boom')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'bad.pdf' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 
   it('filters by status through the summary chips', async () => {

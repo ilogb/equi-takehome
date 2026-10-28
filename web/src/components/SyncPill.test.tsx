@@ -4,6 +4,7 @@ import type { FolderStatus } from '@/lib/api'
 import { SyncPill, syncState } from './SyncPill'
 
 const base: FolderStatus = {
+  drive_folder_id: 'fold1',
   name: 'f',
   last_synced_at: null,
   last_error: null,
