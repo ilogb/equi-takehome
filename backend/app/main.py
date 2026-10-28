@@ -11,6 +11,7 @@ from app.api import folder as folder_api
 from app.api import funds as funds_api
 from app.api import meta as meta_api
 from app.api import rows as rows_api
+from app.api import search as search_api
 from app.auth.crypto import AuthConfigError
 from app.config import Settings, get_settings
 from app.sources.base import ReconnectRequired, SourceError
@@ -49,7 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(auth_api.router)
     app.include_router(folder_api.router)
-    for module in (files_api, documents_api, rows_api, funds_api, meta_api):
+    for module in (files_api, documents_api, rows_api, funds_api, meta_api, search_api):
         app.include_router(module.router)
     return app
 

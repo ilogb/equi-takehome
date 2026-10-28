@@ -220,6 +220,7 @@ def test_analyze_routes_have_operation_ids():
         "query_rows": "/api/rows",
         "list_funds": "/api/funds",
         "describe_data": "/api/meta",
+        "search_documents": "/api/search",
     }
 
 

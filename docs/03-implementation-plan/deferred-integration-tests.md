@@ -103,3 +103,13 @@ Seed two users through `persist_extraction` with FakeLLM; `tests/integration/tes
 - `test_files_list_row_count_and_filters`: `status` and `q` filters; `row_count` and document fields (`doc_type`, `manager`, `funds`, `tags`) present; a file without a document has nulls and `row_count` 0.
 - `test_funds_share_classes_and_documents`: `share_classes` distinct and sorted, `documents` distinct count; fund with no rows returns `[]` and 0.
 - `test_retry_creates_forced_job`: `POST /api/files/{id}/retry` leaves status `queued` and one new `job` with `force = true`, even if an unfinished job exists.
+
+## Task 13
+
+Seed through `persist_extraction` with FakeLLM (chunks embedded); `tests/integration/test_search.py`.
+
+- `test_search_terry_smith_finds_fundsmith`: `simple_search(q="Terry Smith")` returns the Fundsmith documents, one hit per document, snippet containing the match.
+- `test_search_no_results_empty`: a query matching no text and farther than `MAX_COSINE_DISTANCE` from every chunk returns `[]`; an empty `q` returns `[]`.
+- `test_similar_same_fund_first`: `similar_documents` for Fundsmith Jan returns Fundsmith Aug first, never Jan itself.
+- `test_prose_document_searchable`: the no-rows document from Task 9 is found by a word in it.
+- `test_search_scoped_to_user`: user B's chunks never appear in user A's `/api/search` hits or `similar_for_first`.
