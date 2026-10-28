@@ -90,3 +90,16 @@ All need Postgres (`tests/integration/test_auth.py`, `tests/integration/test_syn
 - `test_worker_source_for_marks_reconnect`: `process_one` with the Drive `source_for` and a revoked token fails the job at once (`failed`, attempt 1) and `user.needs_reconnect` is true.
 - `test_requeue_after_reconnect`: a user with `needs_reconnect=true` and files `failed` with `error` containing "reconnect required" (plus one failed with a Drive 404 error) signs in again with a new refresh token: the reconnect-failed files get a new queued `job`, status `queued`, `error` NULL; the 404 one stays `failed`; `needs_reconnect` is false; another user's failed files are untouched.
 - `test_poll_folder_moved_out`: after a watched subfolder is moved out (change with parents outside the set), `watched_folder.descendant_ids` no longer holds it or its subfolders; a later new file in it creates no row; existing rows under it remain.
+
+## Task 12
+
+Seed two users through `persist_extraction` with FakeLLM; `tests/integration/test_read_api.py`.
+
+- `test_rows_scoped_to_user` (Review Focus 3): user A's `GET /api/rows`, `/api/rows.csv`, `/api/documents/{id}`, `/api/funds`, `/api/meta` and `/api/files` never return user B's rows, funds, managers or files; B's document id and file id give 404 (also for `/content`, `/retry`, `/reextract`).
+- `test_rows_filter_january_2026_sorted`: `measure=return&period_kind=month&start=2026-01-01&end=2026-01-31&sort=value&order=desc` -> first entity contains `Man AHL`, value `"0.0842"`; `total` counts all matches regardless of `limit`.
+- `test_rows_csv_export`: same filters; header row, values as decimal strings, `value_percent` column.
+- `test_document_has_tables_and_rows`: `GET /api/documents/{id}` returns metadata, `tables[]` in index order and every extracted row.
+- `test_content_404_marks_missing`: against a real session, the Drive 404 persists `source_file.missing_in_drive = true` and `GET /api/files` then reports it.
+- `test_files_list_row_count_and_filters`: `status` and `q` filters; `row_count` and document fields (`doc_type`, `manager`, `funds`, `tags`) present; a file without a document has nulls and `row_count` 0.
+- `test_funds_share_classes_and_documents`: `share_classes` distinct and sorted, `documents` distinct count; fund with no rows returns `[]` and 0.
+- `test_retry_creates_forced_job`: `POST /api/files/{id}/retry` leaves status `queued` and one new `job` with `force = true`, even if an unfinished job exists.
