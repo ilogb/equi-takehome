@@ -28,7 +28,7 @@ describe('route guard', () => {
     server.use(http.get('/api/auth/me', () => HttpResponse.json({ detail: 'Not authenticated' }, { status: 401 })))
     renderAt('/library')
     await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/connect'))
-    expect(screen.getByRole('link', { name: /sign in with google/i })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /continue with google/i })).toBeInTheDocument()
   })
 
   it('shows the shell for a signed-in user', async () => {
