@@ -15,6 +15,28 @@ and browse them with the source document alongside, and answers questions
 
 **Privacy: documents you connect are sent to OpenAI for extraction, mapping, embeddings and Analyze.**
 
+## Prerequisites
+
+**To run it (the usual way, with Docker):**
+
+- **Docker Desktop**, running: https://www.docker.com/products/docker-desktop/ (includes Docker Compose)
+- **Git**
+- Free ports **5173** (web), **8000** (API) and **5432** (Postgres)
+- `make` is optional: it ships with macOS (Xcode command line tools) and most Linux; every
+  `make` target below is a one-line command you can run directly
+
+**Accounts and keys (already in the `.env` if one was sent to you):**
+
+- An **OpenAI API key**
+- A **Google Cloud OAuth client** with the Drive API enabled (step 1 below)
+- A **Google account** listed both under the OAuth app's **Test users** and in `ALLOWED_EMAILS`
+
+**Only to run without Docker, or to run the tests:**
+
+- **Python 3.12** and **uv** (https://docs.astral.sh/uv/)
+- **Node 22** and npm
+- **Postgres 16 with pgvector**
+
 ## Setup
 
 1. **Google client** (full steps: [spike findings section C.4](docs/03-implementation-plan/2026-10-28-spike-findings.md)):
