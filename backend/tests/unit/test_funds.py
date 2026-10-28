@@ -1,4 +1,4 @@
-from app.pipeline.funds import decide_fund, normalize_entity
+from app.pipeline.funds import decide_fund, fund_key, normalize_entity
 
 
 def test_normalize():
@@ -32,3 +32,13 @@ def test_decide_fund_reuses_existing():
 
 def test_decide_fund_creates_when_unknown():
     assert decide_fund("gamma", {"alpha": 7}) is None
+
+
+def test_fund_key_falls_back_when_everything_is_droppable():
+    keys = [fund_key(n) for n in ("The Fund", "LP", "Inc.")]
+    assert all(keys)
+    assert len(set(keys)) == 3
+
+
+def test_fund_key_matches_normalize_when_nonempty():
+    assert fund_key("Northwind Global Macro Fund, L.P.") == "northwind global macro"
