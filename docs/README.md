@@ -8,7 +8,7 @@ stage gets a new folder.
 | Version | Folder | Who drove it | What it is |
 |---|---|---|---|
 | v0 | `00-only-claude-ai/` | Claude alone, zero guidance | Spec + plan written from the brief with no input from the user. Baseline. |
-| v1 | `01-human-brainstorm/` | The user alone, no AI | The user's own high-level approach. *(to come)* |
+| v1 | `01-human-brainstorm/` | The user alone, no AI | The user's own high-level approach: original image + verbatim transcription. |
 | v2 | `02-superpowers-brainstorm/` | The user + Claude (superpowers:brainstorming) | Every question asked, the user's answer and why, then the resulting spec. *(to come)* |
 | v3+ | `03-…/` | | Plan(s) built from the chosen spec, spikes, and revisions. *(to come)* |
 
