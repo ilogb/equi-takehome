@@ -456,3 +456,16 @@ markup, so what is approved looks like what gets built.
   visible as separate rows; a funds × months grid may come later as a second
   view (recommended).
 - Decision 1 left blank in this paste; the round 7 answer (A) stands.
+
+### Q33 — Mockup realism before planning
+**User (verbatim).**
+> I just want to see the mockup in a more realistic style before plan
+**Question.** What would make the mockup feel realistic to you?
+**Options.** Clickable prototype (recommended) · Same page, more polish · Real
+React + shadcn spike.
+**Answer.** Same page, more polish.
+**Outcome.** One polish pass on the same mockup page, so its frames look like
+a shipped shadcn/ui app: real spacing, page headers, icons, empty states and
+factsheet-like documents. Content, states, numbers and the chosen variants
+(Search A, Document A, Data A) are unchanged. The plan waits for this pass and
+for spec approval.
