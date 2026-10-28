@@ -88,9 +88,20 @@ def apply_mapping(table: RawTable, mapping: CsvMapping, table_index: int) -> lis
 
     # column position -> (spec, fixed period end from the column header, if any)
     specs: dict[int, tuple[_Spec, date | None]] = {}
+    col_entity: dict[int, str] = {}  # entity_columns layout: column position -> fund name
     period_dates: list[date] = []
-    if mapping.layout == "wide" and mapping.period_spec:
-        ps = mapping.period_spec
+    ps = mapping.period_spec
+    if mapping.period_columns and ps is None:
+        raise ValueError(f"{mapping.layout} mapping has period_columns but no period_spec")
+    if mapping.layout == "entity_columns":
+        if date_col is None:
+            raise ValueError("entity_columns mapping needs date_column")
+        if ps is not None:
+            spec = _Spec(ps.measure, ps.period_kind, ps.unit_hint, ps.benchmark_name)
+            for col in mapping.period_columns:
+                specs[pos(col)] = (spec, None)
+                col_entity[pos(col)] = col.strip()
+    elif mapping.layout == "wide" and ps is not None:
         spec = _Spec(ps.measure, ps.period_kind, ps.unit_hint, ps.benchmark_name)
         for col in mapping.period_columns:
             d = _parse_date(col, fmt)
@@ -106,8 +117,11 @@ def apply_mapping(table: RawTable, mapping: CsvMapping, table_index: int) -> lis
 
     overrides = {(o.entity, o.period_kind): o.period_end for o in mapping.period_end_overrides}
     # melt to one record per (source row, value column), then walk the records
+    value_vars = [c for c in specs if c in df.columns]
+    if not value_vars:
+        return []
     long = df.reset_index().melt(
-        id_vars="row", value_vars=[c for c in specs if c in df.columns], var_name="col",
+        id_vars="row", value_vars=value_vars, var_name="col",
         value_name="cell",
     )
     long = long[long["cell"].str.strip() != ""].sort_values(["row", "col"], kind="stable")
@@ -116,7 +130,10 @@ def apply_mapping(table: RawTable, mapping: CsvMapping, table_index: int) -> lis
     out: list[RowOut] = []
     for row, col, cell in long.itertuples(index=False):
         rec = by_row[row]
-        entity = rec[ent].strip() if ent is not None else (mapping.constant_entity or "")
+        if col in col_entity:
+            entity = col_entity[col]
+        else:
+            entity = rec[ent].strip() if ent is not None else (mapping.constant_entity or "")
         if not entity:
             continue
         spec, fixed_end = specs[col]
@@ -136,7 +153,7 @@ def apply_mapping(table: RawTable, mapping: CsvMapping, table_index: int) -> lis
             continue
         end = overrides.get((entity, spec.period_kind), end)
         written = cell.strip()
-        parsed = parse_value(written.rstrip("*").strip(), spec.unit_hint)
+        parsed = parse_value(written, spec.unit_hint)
         if parsed is None:
             continue
         name = spec.benchmark_name

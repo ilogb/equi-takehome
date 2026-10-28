@@ -86,7 +86,7 @@ class Override(_Strict):
 
 
 class CsvMapping(_Strict):
-    layout: Literal["long", "wide"]
+    layout: Literal["long", "wide", "entity_columns"]
     skip_top: int
     skip_bottom: int
     entity_column: str | None

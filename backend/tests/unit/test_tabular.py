@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from app.models import EntityKind, Measure, PeriodKind
-from app.pipeline.schema import CsvMapping, ValueColumn
+from app.pipeline.schema import CsvMapping, PeriodSpec
 from app.pipeline.tabular import RawTable, apply_mapping, read_tables
 from app.values import parse_value
 
@@ -112,32 +112,64 @@ def test_tsp_size():
     table = _table(TSP)
     funds = table.cells[0][1:]
     assert len(funds) == 16
+    mapping = CsvMapping(
+        layout="entity_columns",
+        skip_top=0,
+        skip_bottom=0,
+        entity_column=None,
+        constant_entity=None,
+        share_class_column=None,
+        date_column="Date",
+        period_columns=funds,
+        period_spec=PeriodSpec(
+            measure=Measure.nav, period_kind=PeriodKind.other, unit_hint="number",
+            benchmark_name=None,
+        ),
+        benchmark_column=None,
+        value_columns=[],
+        date_format=None,
+        period_end_overrides=[],
+    )
+    expected = sum(1 for r in table.cells[1:] for c in r[1:] if c.strip())
     start = time.monotonic()
-    total = 0
-    for fund in funds:
-        mapping = CsvMapping(
-            layout="long",
-            skip_top=0,
-            skip_bottom=0,
-            entity_column=None,
-            constant_entity=f"TSP {fund}",
-            share_class_column=None,
-            date_column="Date",
-            period_columns=[],
-            period_spec=None,
-            benchmark_column=None,
-            value_columns=[
-                ValueColumn(
-                    column=fund, measure=Measure.nav, period_kind=PeriodKind.other,
-                    unit_hint="number", benchmark_name=None,
-                )
-            ],
-            date_format=None,
-            period_end_overrides=[],
-        )
-        rows = apply_mapping(table, mapping, 0)
-        total += len(rows)
+    rows = apply_mapping(table, mapping, 0)
     assert time.monotonic() - start < 20
-    assert total > 50000
-    assert rows[0].period_end == date(2026, 10, 27)
-    assert rows[0].period_kind == PeriodKind.other
+    assert len(rows) == expected
+    first = rows[0]
+    assert (first.entity, first.period_end, first.value_as_written) == (
+        "L Income", date(2026, 10, 27), "31.1208",
+    )
+    assert first.measure == Measure.nav and first.period_kind == PeriodKind.other
+    assert (first.row_index, first.col_index) == (1, 1)
+    c_fund = next(r for r in rows if r.entity == "C Fund" and r.period_end == date(2026, 10, 26))
+    assert c_fund.value_as_written == "123.9318"
+
+
+def _mapping_with(**changes) -> CsvMapping:
+    base = _mapping("map_alderbank_performance-summary_2026-09.json")
+    return base.model_copy(update=changes)
+
+
+def test_wide_without_period_spec_and_columns_yields_nothing():
+    table = _table(ALDERBANK)
+    m = _mapping_with(period_spec=None, period_columns=[], value_columns=[])
+    assert apply_mapping(table, m, 0) == []
+
+
+def test_wide_with_period_columns_but_no_spec_is_an_error():
+    import pytest
+
+    with pytest.raises(ValueError, match="period_spec"):
+        apply_mapping(_table(ALDERBANK), _mapping_with(period_spec=None), 0)
+
+
+def test_wide_with_only_empty_columns_yields_nothing():
+    table = _table(ALDERBANK)
+    assert apply_mapping(table, _mapping_with(period_columns=[], value_columns=[]), 0) == []
+
+
+def test_all_blank_body_yields_nothing():
+    table = RawTable("t", [["Fund", "Jan-26"], ["", ""], ["", ""]])
+    m = _mapping_with(skip_top=0, skip_bottom=0, period_columns=["Jan-26"], value_columns=[],
+                      share_class_column=None, period_end_overrides=[])
+    assert apply_mapping(table, m, 0) == []
