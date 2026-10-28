@@ -1,0 +1,42 @@
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { AppHeader } from '@/components/AppHeader'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ApiError, useMe } from '@/lib/api'
+import { Connect } from '@/routes/Connect'
+import { Library } from '@/routes/Library'
+import { DocumentView } from '@/routes/DocumentView'
+import { DataTable } from '@/routes/DataTable'
+import { SearchResults } from '@/routes/SearchResults'
+
+/** Shell for signed-in screens. A 401 from /api/auth/me sends the user to /connect. */
+export function RequireAuth() {
+  const me = useMe()
+  if (me.error instanceof ApiError && me.error.status === 401) return <Navigate to="/connect" replace />
+  if (me.isPending) return <p className="p-8 text-sm text-muted-foreground">Loading…</p>
+  if (me.isError) return <p role="alert" className="p-8 text-sm text-negative">Could not reach the server.</p>
+  return (
+    <>
+      <AppHeader />
+      <main>
+        <Outlet />
+      </main>
+    </>
+  )
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/connect" element={<Connect />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/library" element={<Library />} />
+          <Route path="/documents/:id" element={<DocumentView />} />
+          <Route path="/data" element={<DataTable />} />
+          <Route path="/search" element={<SearchResults />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/library" replace />} />
+      </Routes>
+    </ErrorBoundary>
+  )
+}

@@ -1,0 +1,44 @@
+{
+ "layout": "wide",
+ "skip_top": 3,
+ "skip_bottom": 3,
+ "entity_column": "Fund",
+ "constant_entity": null,
+ "share_class_column": "Class",
+ "date_column": null,
+ "period_columns": [
+  "Jan-26",
+  "Feb-26",
+  "Mar-26",
+  "Apr-26",
+  "May-26",
+  "Jun-26",
+  "Jul-26",
+  "Aug-26",
+  "Sep-26"
+ ],
+ "period_spec": {
+  "measure": "return",
+  "period_kind": "month",
+  "unit_hint": "percent",
+  "benchmark_name": null
+ },
+ "benchmark_column": null,
+ "value_columns": [
+  {
+   "column": "YTD",
+   "measure": "return",
+   "period_kind": "ytd",
+   "unit_hint": "percent",
+   "benchmark_name": null
+  }
+ ],
+ "date_format": "%b-%y",
+ "period_end_overrides": [
+  {
+   "entity": "Alderbank Asia Income Fund",
+   "period_kind": "ytd",
+   "period_end": "2026-08-31"
+  }
+ ]
+}

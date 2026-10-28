@@ -1,0 +1,106 @@
+{
+ "doc_type": "investor_letter",
+ "manager": "Kestrel Ridge Partners",
+ "funds": [
+  {
+   "name": "Kestrel Ridge Long/Short Equity Fund",
+   "share_class": null
+  }
+ ],
+ "as_of_date": "2026-01-31",
+ "currency": "USD",
+ "summary": "January 2026 investor update reporting a 1.90% net fund return versus 1.10% for the MSCI World Index, a 14.60% net return for calendar year 2025, and $612m in month-end fund assets.",
+ "tags": [
+  "long/short equity",
+  "monthly update",
+  "net performance",
+  "MSCI World",
+  "synthetic data"
+ ],
+ "tables": [
+  {
+   "title": null,
+   "header": [
+    [
+     "Period",
+     "Fund (net)",
+     "MSCI World"
+    ]
+   ],
+   "rows": [
+    [
+     "January 2026",
+     "1.90%",
+     "1.10%"
+    ],
+    [
+     "Calendar year 2025",
+     "14.60%",
+     "\u2013"
+    ]
+   ]
+  }
+ ],
+ "rows": [
+  {
+   "entity": "Kestrel Ridge Long/Short Equity Fund",
+   "entity_kind": "fund",
+   "share_class": null,
+   "measure": "return",
+   "period_kind": "month",
+   "period_end": "2026-01-31",
+   "value_as_written": "1.90%",
+   "unit_hint": "percent",
+   "currency": null,
+   "benchmark_name": null,
+   "table_index": 0,
+   "row_index": 0,
+   "col_index": 1
+  },
+  {
+   "entity": "Kestrel Ridge Long/Short Equity Fund",
+   "entity_kind": "fund",
+   "share_class": null,
+   "measure": "benchmark_return",
+   "period_kind": "month",
+   "period_end": "2026-01-31",
+   "value_as_written": "1.10%",
+   "unit_hint": "percent",
+   "currency": null,
+   "benchmark_name": "MSCI World Index",
+   "table_index": 0,
+   "row_index": 0,
+   "col_index": 2
+  },
+  {
+   "entity": "Kestrel Ridge Long/Short Equity Fund",
+   "entity_kind": "fund",
+   "share_class": null,
+   "measure": "return",
+   "period_kind": "1y",
+   "period_end": "2025-12-31",
+   "value_as_written": "14.60%",
+   "unit_hint": "percent",
+   "currency": null,
+   "benchmark_name": null,
+   "table_index": 0,
+   "row_index": 1,
+   "col_index": 1
+  },
+  {
+   "entity": "Kestrel Ridge Long/Short Equity Fund",
+   "entity_kind": "fund",
+   "share_class": null,
+   "measure": "aum",
+   "period_kind": "other",
+   "period_end": "2026-01-31",
+   "value_as_written": "$612m",
+   "unit_hint": "currency",
+   "currency": "USD",
+   "benchmark_name": null,
+   "table_index": null,
+   "row_index": null,
+   "col_index": null
+  }
+ ]
+}

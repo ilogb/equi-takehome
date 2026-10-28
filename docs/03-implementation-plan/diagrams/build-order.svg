@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 190" role="img" aria-label="Build order: backend tasks 1 to 12 run one at a time in the main checkout; once task 12 fixes the API contract, the web lane (tasks 16 to 21) branches into its own worktree and runs in parallel with backend tasks 13 to 15; the lane merges back before task 22, which packages, deploys and runs the full gates." font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="currentColor">
+  <defs>
+    <marker id="bo-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <g font-size="11" opacity="0.75">
+    <text x="20" y="22">main checkout · build/mvp</text>
+    <text x="20" y="128">worktree · lane/web</text>
+  </g>
+
+  <g fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="20" y="34" width="420" height="48" rx="6"/>
+    <rect x="460" y="34" width="200" height="48" rx="6"/>
+    <rect x="740" y="34" width="120" height="48" rx="6"/>
+    <rect x="460" y="140" width="260" height="40" rx="6" stroke="#3a86c8"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="230" y="55" font-weight="600">Tasks 1–12 · backend foundation</text>
+    <text x="230" y="72" font-size="11" opacity="0.75">schema · extraction · queue · Drive sync · read API</text>
+    <text x="560" y="55" font-weight="600">Tasks 13–15</text>
+    <text x="560" y="72" font-size="11" opacity="0.75">search · Analyze · eval</text>
+    <text x="800" y="55" font-weight="600">Task 22</text>
+    <text x="800" y="72" font-size="11" opacity="0.75">deploy · gates</text>
+    <text x="590" y="165" font-weight="600" fill="#3a86c8">Tasks 16–21 · web screens</text>
+  </g>
+
+  <g fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#bo-arrow)">
+    <line x1="440" y1="58" x2="458" y2="58"/>
+    <line x1="660" y1="58" x2="738" y2="58"/>
+    <polyline points="430,82 430,160 458,160"/>
+    <polyline points="720,160 760,160 760,84"/>
+  </g>
+  <g font-size="11">
+    <text x="424" y="112" text-anchor="end">branch once the API</text>
+    <text x="424" y="126" text-anchor="end">contract is fixed</text>
+    <text x="768" y="122">merge</text>
+  </g>
+</svg>

@@ -82,6 +82,16 @@ Document A, Data A): `docs/02-superpowers-brainstorm/2026-10-28-document-intelli
 
 ---
 
+## Architecture at a glance
+
+![The browser reaches the API only through the web app's /api proxy, so the session cookie stays on one origin. The API and the worker share one Postgres with pgvector. Only the worker polls Drive and calls OpenAI to extract; the API touches Drive only to stream a file into the viewer, and OpenAI only for Analyze.](diagrams/system.svg)
+
+![Every file moves through one job queue. Sync queues new files only (edits and deletes are ignored, Q24). A worker claims a job under a lease; retryable errors back off 30 s, 2 min, 10 min and then fail; a scanned PDF stops before any LLM call.](diagrams/file-lifecycle.svg)
+
+![Analyze turns the app's own read endpoints into the model's tools. Each tool call runs in-process as the asking user, so the model can never read another user's rows. The loop stops after five calls, and cited document ids are checked before they become links.](diagrams/analyze-loop.svg)
+
+![Backend Tasks 1–12 run in order in the main checkout. Once Task 12 fixes the API contract, the web lane runs in its own worktree alongside Tasks 13–15, then merges back before Task 22 packages, deploys and runs the full gates.](diagrams/build-order.svg)
+
 ## File structure
 
 ```

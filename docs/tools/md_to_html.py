@@ -18,6 +18,13 @@ body = body.replace("<blockquote>", '<blockquote class="callout">')
 body = re.sub(r"\(Claude(?:&rsquo;|'|’)s call(?:[^)]*)\)", lambda m: f'<span class="call">{m.group(0)[1:-1]}</span>', body)
 body = re.sub(r"\((Q\d+(?:[,–-] ?Q?\d+)*)(?:;[^)]*)?\)", lambda m: f'<span class="qref">{m.group(0)[1:-1]}</span>', body)
 body = body.replace("TBD", '<mark class="tbd">TBD</mark>')
+# Inline local SVG diagrams as <figure>s so the page is self-contained; the alt text becomes the caption.
+def _inline_svg(m):
+    alt, src = m.group("alt"), m.group("src")
+    svg = (src_dir / src).read_text()
+    return f'<figure class="diagram">{svg}<figcaption>{alt}</figcaption></figure>'
+src_dir = src.parent
+body = re.sub(r'<p><img alt="(?P<alt>[^"]*)" src="(?P<src>[^"]+\.svg)" ?/?></p>', _inline_svg, body)
 
 page = f"""<title>{title}</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -67,6 +74,9 @@ mark.tbd {{ background: var(--tbd); color: var(--ink); padding: 0 4px; border-ra
 table {{ border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; max-width: 100%; }}
 th, td {{ border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }}
 a {{ color: var(--accent); }}
+figure.diagram {{ margin: 22px 0 26px; max-width: 100% !important; color: var(--ink); }}
+figure.diagram svg {{ width: 100%; height: auto; display: block; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; box-sizing: border-box; }}
+figure.diagram figcaption {{ font-size: 14px; color: var(--muted); margin-top: 8px; max-width: 72ch; }}
 </style>
 <div class="wrap">
   <nav class="toc" aria-label="Contents"><div class="label">Contents</div>{toc}</nav>
