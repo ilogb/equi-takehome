@@ -1,6 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { FolderOpen, Layers, LogOut, Moon, Search, Sun, SunMoon } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useIsFetching, useQueryClient } from '@tanstack/react-query'
+import { FolderOpen, Layers, Loader2, LogOut, Moon, Search, Sun, SunMoon } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { SyncPill } from '@/components/SyncPill'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { useFolder, useLogout, useMe } from '@/lib/api'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { keys, useFolder, useLogout, useMe } from '@/lib/api'
 import { applyTheme, type Theme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
@@ -33,44 +34,134 @@ function initials(name: string | null | undefined, email: string | undefined): s
   return ((parts[0]?.[0] ?? '?') + (parts.length > 1 ? (parts[1]?.[0] ?? '') : '')).toUpperCase()
 }
 
+const PLACEHOLDER: Record<SearchMode, string> = {
+  find: 'Find documents and figures',
+  analyze: 'Ask a question about your funds',
+}
+const NARROW_PLACEHOLDER: Record<SearchMode, string> = { ...PLACEHOLDER, analyze: 'Ask about your funds' }
+const NARROW = '(max-width: 767px)' // below md, where the box drops to its own row
+
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => window.matchMedia?.(NARROW).matches ?? false)
+  useEffect(() => {
+    const mq = window.matchMedia?.(NARROW)
+    if (!mq) return
+    const on = () => setNarrow(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return narrow
+}
+
+/** Header search. On /search the text and mode mirror the URL (Back/Forward included);
+ *  elsewhere the last query stays so it can be refined. */
 function SearchBox() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
+  const narrow = useNarrow()
   const { pathname, search } = useLocation()
-  const params = new URLSearchParams(search)
   const onSearch = pathname === '/search'
-  const [text, setText] = useState(onSearch ? (params.get('q') ?? '') : '')
-  const [mode, setMode] = useState<SearchMode>(params.get('mode') === 'analyze' ? 'analyze' : 'find')
+  const params = new URLSearchParams(search)
+  const urlQ = onSearch ? (params.get('q') ?? '').trim() : ''
+  const urlMode: SearchMode = onSearch && params.get('mode') === 'analyze' ? 'analyze' : 'find'
+  const [text, setText] = useState(urlQ)
+  const [mode, setMode] = useState<SearchMode>(urlMode)
+
+  // Follow the URL whenever it changes on /search (state adjusted during render, not in an effect).
+  const urlKey = onSearch ? search : null
+  const [seenKey, setSeenKey] = useState(urlKey)
+  if (urlKey !== seenKey) {
+    setSeenKey(urlKey)
+    if (onSearch) {
+      setText(urlQ)
+      setMode(urlMode)
+    }
+  }
+
+  const q = text.trim()
+  const empty = q === ''
+  // The search in the URL is still loading (Analyze can take a minute): show it on the button
+  // and ignore repeats of it, so a second click never fires a second request.
+  const loadingKey = urlMode === 'analyze' ? keys.analyze(urlQ) : keys.search(urlQ)
+  const busy = useIsFetching({ queryKey: loadingKey }) > 0 && onSearch && urlQ !== ''
+
+  function run(m: SearchMode) {
+    if (empty) return
+    if (onSearch && q === urlQ && m === urlMode) {
+      if (busy) return
+      // Same URL: navigating would be a no-op and serve the cache, so re-run explicitly.
+      void qc.refetchQueries({ queryKey: m === 'analyze' ? keys.analyze(q) : keys.search(q) })
+      return
+    }
+    navigate(`/search?${new URLSearchParams({ q, mode: m })}`)
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    const q = text.trim()
-    if (!q) return
-    navigate(`/search?${new URLSearchParams({ q, mode })}`)
+    run(mode)
+  }
+
+  function changeMode(v: string) {
+    if (!v) return
+    const m = v as SearchMode
+    setMode(m)
+    // Re-run only an unedited query, so a half-typed edit is never sent.
+    if (onSearch && !empty && q === urlQ) run(m)
   }
 
   return (
     <form role="search" onSubmit={submit} className="mx-auto flex w-full max-w-xl items-center gap-2">
       <div className="relative min-w-0 flex-1">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
           type="search"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={mode === 'find' ? 'Find documents and figures' : 'Ask a question about your funds'}
+          placeholder={(narrow ? NARROW_PLACEHOLDER : PLACEHOLDER)[mode]}
           aria-label="Search"
-          className="h-8 pl-8"
+          className="h-8 pr-9 [&::-webkit-search-cancel-button]:appearance-none"
         />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Search"
+                aria-disabled={empty || undefined}
+                aria-busy={busy || undefined}
+                className={cn(
+                  'absolute right-1 top-1/2 -translate-y-1/2',
+                  empty ? 'cursor-default text-muted-foreground opacity-50 hover:bg-transparent' : 'text-primary',
+                  busy && 'cursor-progress',
+                )}
+              >
+                {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Search aria-hidden />}
+              </Button>
+            </TooltipTrigger>
+            {empty && <TooltipContent sideOffset={6}>Type something to search</TooltipContent>}
+            {busy && !empty && (
+              <TooltipContent sideOffset={6}>{urlMode === 'analyze' ? 'Analyzing…' : 'Searching…'}</TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <ToggleGroup
         type="single"
-        variant="outline"
-        size="sm"
         value={mode}
-        onValueChange={(v) => v && setMode(v as SearchMode)}
+        onValueChange={changeMode}
         aria-label="Search mode"
+        className="h-8 shrink-0 gap-0 rounded-lg bg-muted p-[3px] text-muted-foreground"
       >
-        <ToggleGroupItem value="find">Find</ToggleGroupItem>
-        <ToggleGroupItem value="analyze">Analyze</ToggleGroupItem>
+        {(['find', 'analyze'] as const).map((m) => (
+          <ToggleGroupItem
+            key={m}
+            value={m}
+            className="h-full min-w-0 px-3 hover:bg-transparent data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"
+          >
+            {m === 'find' ? 'Find' : 'Analyze'}
+          </ToggleGroupItem>
+        ))}
       </ToggleGroup>
     </form>
   )

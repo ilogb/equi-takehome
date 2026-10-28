@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter, useLocation } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { QueryProvider } from './QueryProvider'
 import { server } from './test/server'
@@ -12,12 +12,19 @@ function Where() {
   return <div data-testid="where">{l.pathname + l.search}</div>
 }
 
-function renderAt(path: string) {
+function Back() {
+  const nav = useNavigate()
+  return <button onClick={() => nav(-1)}>history back</button>
+}
+
+function renderAt(path: string | string[]) {
+  const entries = Array.isArray(path) ? path : [path]
   return render(
-    <MemoryRouter initialEntries={[path]}>
+    <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
       <QueryProvider retry={false}>
         <App />
         <Where />
+        <Back />
       </QueryProvider>
     </MemoryRouter>,
   )
@@ -65,5 +72,90 @@ describe('header search', () => {
     renderAt('/library')
     await user.type(await screen.findByRole('searchbox', { name: 'Search' }), 'nav{Enter}')
     await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/search?q=nav&mode=find'))
+  })
+
+  it('the search button submits', async () => {
+    const user = userEvent.setup()
+    renderAt('/library')
+    await user.type(await screen.findByRole('searchbox', { name: 'Search' }), 'nav')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/search?q=nav&mode=find'))
+  })
+
+  it('an empty box cannot be submitted, by button or Enter', async () => {
+    const user = userEvent.setup()
+    renderAt('/library')
+    const button = await screen.findByRole('button', { name: 'Search' })
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    await user.click(button)
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), '   {Enter}')
+    expect(screen.getByTestId('where')).toHaveTextContent('/library')
+  })
+
+  it('on /search, switching mode re-runs the unedited query in the new mode', async () => {
+    const user = userEvent.setup()
+    renderAt('/search?q=nav&mode=find')
+    await user.click(await screen.findByRole('radio', { name: 'Analyze' }))
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/search?q=nav&mode=analyze'))
+  })
+
+  it('on /search, switching mode after editing the box waits for Enter', async () => {
+    const user = userEvent.setup()
+    renderAt('/search?q=nav&mode=find')
+    const box = await screen.findByRole('searchbox', { name: 'Search' })
+    await user.type(box, ' history')
+    await user.click(screen.getByRole('radio', { name: 'Analyze' }))
+    expect(screen.getByTestId('where')).toHaveTextContent('/search?q=nav&mode=find')
+    await user.type(box, '{Enter}')
+    await waitFor(() =>
+      expect(screen.getByTestId('where')).toHaveTextContent('/search?q=nav+history&mode=analyze'),
+    )
+  })
+
+  it('the box and mode follow the URL on Back', async () => {
+    const user = userEvent.setup()
+    renderAt(['/search?q=first&mode=analyze', '/search?q=second&mode=find'])
+    const box = await screen.findByRole('searchbox', { name: 'Search' })
+    expect(box).toHaveValue('second')
+    expect(screen.getByRole('radio', { name: 'Find' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'history back' }))
+    await waitFor(() => expect(box).toHaveValue('first'))
+    expect(screen.getByRole('radio', { name: 'Analyze' })).toBeChecked()
+  })
+
+  it('submitting the same query and mode again re-runs it', async () => {
+    const get = vi.fn(() => HttpResponse.json({ hits: [], similar_for_first: [] }))
+    server.use(http.get('/api/search', get))
+    const user = userEvent.setup()
+    renderAt('/search?q=nav&mode=find')
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(1))
+    await user.click(await screen.findByRole('button', { name: 'Search' }))
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2))
+  })
+
+  it('shows the search as busy while Analyze runs and ignores repeat clicks', async () => {
+    let posts = 0
+    let release!: () => void
+    const answered = new Promise<void>((r) => (release = r))
+    server.use(
+      http.post('/api/analyze', async () => {
+        posts += 1
+        await answered
+        return HttpResponse.json({ text: 'Done.', table: null, sources: [], steps: [] })
+      }),
+    )
+    const user = userEvent.setup()
+    renderAt('/library')
+    await user.type(await screen.findByRole('searchbox', { name: 'Search' }), 'best fund')
+    await user.click(screen.getByRole('radio', { name: 'Analyze' }))
+    const button = screen.getByRole('button', { name: 'Search' })
+    await user.click(button)
+    await waitFor(() => expect(button).toHaveAttribute('aria-busy', 'true'))
+    await user.click(button)
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), '{Enter}')
+    expect(posts).toBe(1)
+    release()
+    await waitFor(() => expect(button).not.toHaveAttribute('aria-busy'))
+    expect(posts).toBe(1)
   })
 })
