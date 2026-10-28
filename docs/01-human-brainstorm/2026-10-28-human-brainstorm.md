@@ -4,6 +4,10 @@
 > The original is `2026-10-28-human-brainstorm.png`; below is a verbatim
 > transcription (spelling kept as written) so it can be diffed and quoted.
 > Nothing here was changed or added by Claude.
+>
+> **Update.** Later the same day the user added "Landing Dashboard" to both lists; the
+> updated picture is `2026-10-28-human-brainstorm-v2.png` (the original is kept as it was).
+> The two added lines are marked *(added in v2)* below.
 
 ## Work Backwards from the goal?
 
@@ -25,6 +29,7 @@
   - Good categorization will allow quick filters from the backend
   - After it's easy to throw a prompt that looks at our filters, api's and can take a users plan text and convert to a query
   - Super Intellegent Search that might need to run agent tools become a thing and for first pass, we may skip an agent system but we need to create "tools" or "apis" in the backend that the LLM can make to answer queries that may need to look a bunch of docs and pull out numbers and calculations
+- Landing Dashboard *(added in v2)*
 - Scaling
   - Cron Jobs
   - Caching → LLM level, FE level, BE level
@@ -47,3 +52,4 @@
 - Show similar results as well with good categorization
 - See if we can identify tabular data and numbers and render them as such on the ui.
   - We would first use LLM to spot them, then store a mapping to file of raw data in a fast format to query on.
+- Landing Dashboard Page *(added in v2)*
