@@ -1,5 +1,6 @@
 """Find mode: hybrid full-text + vector search fused with reciprocal rank fusion, and similar documents."""
 
+import logging
 import re
 from dataclasses import dataclass, field
 from datetime import date
@@ -10,7 +11,10 @@ from sqlalchemy import Select, func, select, type_coerce
 from sqlalchemy.orm import Session
 
 from app.llm.base import LLMProvider
+from app.pipeline.funds import fund_key
 from app.models import EMBEDDING_DIMS, Chunk, Document, SourceFile
+
+log = logging.getLogger(__name__)
 
 RRF_K = 60
 CANDIDATES = 50  # per ranking, before fusion
@@ -105,7 +109,16 @@ class SimilarCandidate:
 
 
 def _fund_keys(funds: list) -> frozenset[str]:
-    return frozenset(str(f).strip().lower() for f in funds or [] if str(f).strip())
+    """Identity keys of a document's funds; entries are {"name", "share_class"} dicts or plain names."""
+    keys = set()
+    for f in funds or []:
+        name = f.get("name") if isinstance(f, dict) else f
+        if isinstance(name, str) and name.strip():
+            share_class = (f.get("share_class") or "").strip() if isinstance(f, dict) else ""
+            if share_class and name.lower().rstrip().endswith(share_class.lower()):
+                name = name.rstrip()[: -len(share_class)].strip() or name  # "Fund T EUR Acc" -> "Fund"
+            keys.add(fund_key(name))
+    return frozenset(keys)
 
 
 def _manager_key(manager: str | None) -> str | None:
@@ -175,7 +188,13 @@ def simple_search(session: Session, user_id: int, q: str, llm: LLMProvider, limi
     if not q:
         return []
     text_ids = list(session.scalars(fulltext_query(user_id, q)))
-    vec_ids = list(session.scalars(vector_query(user_id, llm.embed([q])[0])))
+    try:
+        embedding = llm.embed([q])[0]
+    except Exception:
+        log.warning("query embedding failed; falling back to full-text only", exc_info=True)
+        vec_ids = []
+    else:
+        vec_ids = list(session.scalars(vector_query(user_id, embedding)))
     fused = rrf_fuse([text_ids, vec_ids])
     if not fused:
         return []

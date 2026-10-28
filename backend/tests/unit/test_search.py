@@ -88,3 +88,46 @@ def test_queries_always_scoped_to_user():
     assert "chunk.user_id = 7" in sql(chunk_hits_query(7, [1, 2]))
     s = sql(similar_candidates_query(7, 3))
     assert "chunk.user_id = 7" in s and "document.user_id = 7" in s
+
+
+def test_order_similar_matches_funds_across_share_classes():
+    from app.search.service import _fund_keys
+
+    t_eur = [{"name": "Fundsmith Equity Fund T EUR Acc", "share_class": "T EUR Acc"}]
+    i_acc = [{"name": "Fundsmith Equity Fund I Acc", "share_class": "I Acc"}]
+    other = [{"name": "Lindsell Train Global", "share_class": None}]
+    assert _fund_keys(["Fundsmith Equity Fund"]) == _fund_keys([{"name": "Fundsmith Equity Fund", "share_class": None}])
+    anchor = SimilarCandidate(_cand(1).hit, _fund_keys(t_eur), None, 0.0)
+    near_other = SimilarCandidate(_cand(2).hit, _fund_keys(other), None, 0.01)
+    far_same = SimilarCandidate(_cand(3, as_of=date(2026, 8, 31)).hit, _fund_keys(i_acc), None, 0.9)
+    assert [h.document_id for h in order_similar([anchor, near_other, far_same], anchor)] == [3, 2]
+
+
+def test_search_falls_back_to_fulltext_when_embed_raises():
+    from types import SimpleNamespace
+
+    from app.search.service import simple_search
+
+    class Boom:
+        def embed(self, texts):
+            raise RuntimeError("openai down")
+
+    doc = SimpleNamespace(id=5, doc_type="factsheet", manager="M", funds=[], as_of_date=None, tags=[])
+    file = SimpleNamespace(name="a.pdf", path="x/a.pdf")
+    row = SimpleNamespace(id=10, document_id=5, text="Terry Smith runs Fundsmith", Document=doc, SourceFile=file)
+
+    class Session:
+        def __init__(self):
+            self.scalar_calls = 0
+
+        def scalars(self, stmt):
+            self.scalar_calls += 1
+            return [10]
+
+        def execute(self, stmt):
+            return SimpleNamespace(all=lambda: [row])
+
+    session = Session()
+    hits = simple_search(session, 1, "terry smith", Boom())
+    assert session.scalar_calls == 1  # full-text only; no vector query
+    assert [h.document_id for h in hits] == [5] and "Terry Smith" in hits[0].snippet
