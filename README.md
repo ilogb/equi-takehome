@@ -1,5 +1,7 @@
 # Document Intelligence
 
+> **Reviewing this take-home?** Follow [QUICKSTART.md](QUICKSTART.md): Docker, the `.env` you were sent, one command.
+
 Connect a Google Drive folder of fund documents (PDF, CSV/xlsx, HTML/eml). The app
 extracts performance figures, AUM and printed tables into Postgres, lets you search
 and browse them with the source document alongside, and answers questions
