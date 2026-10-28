@@ -9,4 +9,7 @@ web/dist
 docs
 fixtures
 fixtures.zip
-.env
+**/.env*
+!.env.example
+**/.pytest_cache
+**/.ruff_cache

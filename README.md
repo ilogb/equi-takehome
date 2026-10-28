@@ -36,8 +36,9 @@ and browse them with the source document alongside, and answers questions
 
 ## Deploy
 
-CapRover: see [deploy/caprover/README.md](deploy/caprover/README.md). The `web` app proxies
-`/api`, so the Google redirect URI is on the web app's domain.
+CapRover: see [deploy/caprover/README.md](deploy/caprover/README.md). The definitions are
+`captain-definition-api`, `captain-definition-worker` and `captain-definition-web` at the repo
+root. The `web` app proxies `/api`, so the Google redirect URI is on the web app's domain.
 
 ## Design history
 

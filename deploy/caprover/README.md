@@ -13,11 +13,17 @@ lives on the **web** app's domain.
 | `worker` | `captain-definition-worker` | No HTTP; same code, `python -m app.jobs.worker`. |
 | `web` | `captain-definition-web` | nginx on port 80; enable HTTPS. Env: `API_UPSTREAM=srv-captain--api:8000`. |
 
-All three definitions use `dockerfilePath` and build from the repo root. `api` and `worker`
-use the same `backend/Dockerfile`; the worker app sets `APP_ROLE=worker`, which makes the
-image run `python -m app.jobs.worker` instead of migrations + uvicorn. In each app's
-Deployment tab (deploy from Git) set "Captain Definition Relative Path" to
-`deploy/caprover/captain-definition-<api|worker|web>`.
+The three definition files live at the **repo root** (`captain-definition-api`,
+`captain-definition-worker`, `captain-definition-web`), so their `dockerfilePath`
+(`./backend/Dockerfile`, `./web/Dockerfile`) and the Dockerfiles' `COPY` paths all resolve
+against the repo root, which is the build context. `api` and `worker` use the same
+`backend/Dockerfile`; the worker app sets `APP_ROLE=worker`, which makes the image run
+`python -m app.jobs.worker` instead of migrations + uvicorn. In each app's Deployment tab
+(deploy from Git) set "Captain Definition Relative Path" to
+`./captain-definition-<api|worker|web>`.
+
+**Deploy api before worker**: the api runs `alembic upgrade head` on boot; a worker that
+starts against an unmigrated database fails its polls until the api has run.
 
 **Deploy api before web**: nginx in `web` fails to start if the api host does not resolve.
 
