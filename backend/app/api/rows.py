@@ -152,6 +152,9 @@ def row_filters(
     end: date | None = None,
     needs_review: bool | None = None,
     conflict: bool | None = None,
+    document_id: int | None = Query(
+        None, description="Only rows extracted from this document (the id from get_document)."
+    ),
     sort: Literal["value", "period_end", "entity"] = "period_end",
     order: Literal["asc", "desc"] = "desc",
     limit: int = Query(100, ge=1, le=MAX_LIMIT),
@@ -159,7 +162,7 @@ def row_filters(
 ) -> RowFilters:
     return RowFilters(
         fund, manager, entity_kind, share_class, measure, period_kind, start, end,
-        needs_review, conflict, None, sort, order, limit, offset,
+        needs_review, conflict, document_id, sort, order, limit, offset,
     )  # fmt: skip
 
 

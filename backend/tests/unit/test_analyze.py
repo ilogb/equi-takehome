@@ -140,6 +140,8 @@ def test_tools_only_analyze_get_routes():
     rows = by_name["query_rows"]["parameters"]
     assert {"measure", "period_kind", "start", "end", "sort", "order", "limit"} <= set(rows["properties"])
     assert by_name["get_document"]["parameters"]["required"] == ["document_id"]
+    assert "document" in rows["properties"]["document_id"]["description"]
+    assert "rows_total" in by_name["get_document"]["description"]
     # nothing about identity is a model-visible parameter
     for t in tools:
         assert not any("internal" in p.lower() for p in t["parameters"]["properties"])

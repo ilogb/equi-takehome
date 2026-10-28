@@ -16,7 +16,7 @@ from app.auth.deps import current_user, user_source
 from app.config import Settings
 from app.db import get_session
 from app.main import create_app
-from app.models import CommonRow, Document, SourceFile, User, WatchedFolder
+from app.models import CommonRow, Document, PrintedTable, SourceFile, User, WatchedFolder
 from app.sources.base import SourceError
 
 
@@ -247,19 +247,27 @@ def test_files_query_selects_document_id_and_drive_file_id():
 
 
 class DocSession:
-    def __init__(self, found):
+    def __init__(self, found, tables=(), rows_total=0):
         self.found = found
+        self.tables = list(tables)
+        self.rows_total = rows_total
+        self.statements = []
 
     def execute(self, stmt):
+        self.statements.append(stmt)
         return SimpleNamespace(first=lambda: self.found, all=lambda: [])
 
     def scalars(self, stmt):
-        return SimpleNamespace(all=lambda: [])
+        return SimpleNamespace(all=lambda: self.tables)
+
+    def scalar(self, stmt):
+        return self.rows_total
 
 
-def doc_client(found):
+def doc_client(found, session=None):
     app = create_app(settings())
-    app.dependency_overrides[get_session] = lambda: DocSession(found)
+    session = session or DocSession(found)
+    app.dependency_overrides[get_session] = lambda: session
     app.dependency_overrides[current_user] = lambda: User(id=1, email="a@b.c")
     return TestClient(app)
 
@@ -277,6 +285,47 @@ def test_get_document_includes_file_object():
         "drive_file_id": "d1",
     }  # fmt: skip
     assert body["source_file_id"] == 5 and body["status"] == "failed"
+
+
+def test_get_document_caps_rows_and_table_bodies():
+    f = SourceFile(id=5, user_id=1, drive_file_id="d1", name="tsp.csv", path="tsp.csv", mime_type="text/csv",
+                   status="done", error=None, missing_in_drive=False)
+    d = Document(id=3, user_id=1, source_file_id=5, tags=[], funds=[])
+    big = PrintedTable(index=0, title="Prices", header=[["Date", "G"], ["", "USD"]],
+                       rows=[[str(i), "1"] for i in range(5846)])
+    small = PrintedTable(index=1, title=None, header=[["A"]], rows=[["1"]])
+    session = DocSession((d, f), tables=[big, small], rows_total=5846)
+    body = doc_client(None, session).get("/api/documents/3").json()
+    assert body["rows_total"] == 5846
+    t0, t1 = body["tables"]
+    assert len(t0["rows"]) == 200 and t0["rows_total"] == 5846
+    assert t0["header"] == [["Date", "G"], ["", "USD"]]
+    assert t1["rows"] == [["1"]] and t1["rows_total"] == 1
+    rows_sql = sql(session.statements[1])
+    assert "LIMIT 500" in rows_sql
+    assert "common_row.user_id = 1" in rows_sql and "common_row.document_id = 3" in rows_sql
+
+
+def test_rows_document_id_filter_from_query_string():
+    captured = []
+
+    class S:
+        def execute(self, stmt):
+            captured.append(sql(stmt))
+            return SimpleNamespace(all=lambda: [])
+
+        def scalar(self, stmt):
+            return 0
+
+    app = create_app(settings())
+    app.dependency_overrides[get_session] = lambda: S()
+    app.dependency_overrides[current_user] = lambda: User(id=4, email="a@b.c")
+    c = TestClient(app)
+    assert c.get("/api/rows?document_id=17").json() == {"rows": [], "total": 0}
+    assert c.get("/api/rows.csv?document_id=17").status_code == 200
+    for text in captured:
+        assert "common_row.document_id = 17" in text and "common_row.user_id = 4" in text
+    assert len(captured) == 2
 
 
 def test_get_document_query_scoped_and_404():

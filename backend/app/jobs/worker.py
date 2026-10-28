@@ -44,9 +44,12 @@ def process_one(
             if file is None:
                 raise PermanentError(f"source file {job.source_file_id} no longer exists")
             process_file(session, file, source_for(session, file), llm, settings)
-            if not complete(session, job, lease):
-                log.warning("job %s lease lost before completion; ignoring result", job_id)
-            session.commit()
+            if complete(session, job, lease):
+                session.commit()
+            else:
+                # Another worker owns the job now: discard this run's pipeline writes.
+                log.warning("job %s lease lost before completion; discarding result", job_id)
+                session.rollback()
         except Exception as err:
             if getattr(err, "retryable", None) is not False:
                 log.exception("job %s failed", job_id)
@@ -54,9 +57,11 @@ def process_one(
                 log.warning("job %s failed permanently: %s", job_id, err)
             session.rollback()
             job = session.get(Job, job_id)
-            if job is None or not fail(session, job, err, _now(), lease):
+            if job is not None and fail(session, job, err, _now(), lease):
+                session.commit()
+            else:
                 log.warning("job %s lease lost before failure was recorded; ignoring", job_id)
-            session.commit()
+                session.rollback()
         return True
 
 

@@ -19,7 +19,18 @@ FIXTURES = ROOT / "fixtures"
         ("message/rfc822", "a.eml", "eml"),
         ("application/octet-stream", "x.eml", "eml"),
         ("application/vnd.google-apps.spreadsheet", "sheet", None),
+        ("application/vnd.google-apps.spreadsheet", "sheet.csv", None),
+        ("application/vnd.google-apps.document", "memo.pdf", None),
         ("image/png", "a.png", None),
+        ("application/octet-stream", "Report.PDF", "pdf"),
+        ("text/plain", "prices.csv", "csv"),
+        ("application/vnd.ms-excel", "prices.csv", "csv"),
+        ("application/octet-stream", "book.xlsx", "xlsx"),
+        ("text/plain", "page.htm", "html"),
+        ("application/octet-stream", "page.html", "html"),
+        ("text/csv; charset=utf-8", "a", "csv"),
+        ("application/octet-stream", "notes.txt", None),
+        ("application/octet-stream", "noext", None),
     ],
 )
 def test_kind_for(mime, name, expected):

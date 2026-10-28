@@ -151,9 +151,12 @@ class GoogleDriveSource:
             }
             data = self._json("/changes", params)
             for c in data.get("changes", []):
+                file_id = c.get("fileId")
+                if not file_id:  # e.g. changeType "drive": a shared-drive change, not a file
+                    continue
                 f = c.get("file")
                 changes.append(
-                    RemoteChange(file_id=c["fileId"], removed=bool(c.get("removed")), file=_remote(f) if f else None)
+                    RemoteChange(file_id=file_id, removed=bool(c.get("removed")), file=_remote(f) if f else None)
                 )
             if "nextPageToken" in data:
                 token = data["nextPageToken"]

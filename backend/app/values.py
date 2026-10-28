@@ -17,6 +17,7 @@ _CURRENCY_SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP"}
 _ISO_CODES = "USD|EUR|GBP|CHF|JPY|CAD|AUD|NZD|HKD|SGD|SEK|NOK|DKK|CNY"
 _ISO_PREFIX = re.compile(rf"^(-\s*)?({_ISO_CODES})\s+", re.IGNORECASE)
 _ISO_SUFFIX = re.compile(rf"\s+({_ISO_CODES})$", re.IGNORECASE)
+_DASH_SIGN = re.compile(r"[–—](?=\s*[\d.$€£(])")  # en/em dash used as a minus sign
 _MULTIPLIERS = {"m": Decimal(10) ** 6, "bn": Decimal(10) ** 9}
 _NUMBER = re.compile(
     r"""^(?P<neg>-)?\s*(?P<cur>[$€£])?\s*(?P<neg2>-)?\s*
@@ -35,6 +36,7 @@ class ParsedValue:
 
 def parse_value(text: str, unit_hint: UnitHint | None) -> ParsedValue | None:
     s = text.strip().rstrip("*").rstrip().replace("−", "-").replace("+", "", 1)
+    s = _DASH_SIGN.sub("-", s)  # a bare dash stays a placeholder
     if s.lower() in _PLACEHOLDERS:
         return None
     negative = False
@@ -60,7 +62,8 @@ def parse_value(text: str, unit_hint: UnitHint | None) -> ParsedValue | None:
     currency = _CURRENCY_SYMBOLS.get(m["cur"]) if m["cur"] else iso
 
     unit: Unit
-    if suffix == "%" or (unit_hint == "percent" and not suffix):
+    # an explicit currency outranks a "percent" hint: "$5" is five dollars
+    if suffix == "%" or (unit_hint == "percent" and not suffix and not currency):
         value, unit = value / 100, "fraction"
     elif suffix == "bps":
         value, unit = value / 10000, "fraction"

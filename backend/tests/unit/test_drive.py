@@ -121,6 +121,17 @@ def test_list_changes_mask_and_next_token():
     assert http.requests[1][1]["pageToken"] == "150"
 
 
+def test_list_changes_skips_entries_without_file_id():
+    src, _ = source(
+        Resp(200, {"changes": [{"changeType": "drive", "driveId": "d1", "removed": False},
+                               {"changeType": "file", "fileId": "x", "removed": True}],
+                   "newStartPageToken": "200"}),
+    )
+    changes, token = src.list_changes("199")
+    assert token == "200"
+    assert [c.file_id for c in changes] == ["x"]
+
+
 def test_list_changes_410():
     src, _ = source(Resp(410, {}))
     with pytest.raises(PageTokenExpired):

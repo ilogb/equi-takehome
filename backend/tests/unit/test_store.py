@@ -5,8 +5,17 @@ from pathlib import Path
 from app.llm.fake import FakeLLM
 from app.models import ChunkKind, EntityKind, Measure, PeriodKind
 from app.pipeline.detect import FileKind
-from app.pipeline.schema import DocumentExtraction, RowOut
-from app.pipeline.store import ConflictRow, build_rows, chunk_texts, find_conflicts
+from app.pipeline.schema import DocumentExtraction, RowOut, TableOut
+from app.pipeline.store import (
+    MAX_EMBED_TOKENS,
+    ConflictRow,
+    build_rows,
+    chunk_texts,
+    conflict_changes,
+    estimate_tokens,
+    find_conflicts,
+    mark_conflicts,
+)
 from app.pipeline.text import LoadedText
 
 RECORDED = Path(__file__).resolve().parents[1] / "recorded"
@@ -140,3 +149,77 @@ def test_long_page_split_and_tables_rendered():
     tables = [t for k, t in chunks if k == ChunkKind.table]
     assert len(tables) == len(ex.tables)
     assert " | " in tables[0]
+
+
+def test_huge_table_split_with_title_and_header_on_every_piece():
+    header = [["Date", "G Fund", "F Fund", "C Fund", "S Fund", "I Fund"]]
+    rows = [[f"2004-01-{i:05d}", "13.2345", "10.1234", "12.3456", "14.5678", "11.2345"] for i in range(5000)]
+    table = TableOut(title="TSP share prices", header=header, rows=rows)
+    ex = extraction("fundsmith_factsheet_2026-01.pdf").model_copy(update={"tables": [table], "rows": []})
+    chunks = chunk_texts(LoadedText("csv", []), ex.tables, ex)
+    tables = [t for k, t in chunks if k == ChunkKind.table]
+    assert len(tables) > 10
+    for t in tables:
+        lines = t.splitlines()
+        assert lines[0] == "TSP share prices"
+        assert lines[1] == "Date | G Fund | F Fund | C Fund | S Fund | I Fund"
+        assert estimate_tokens(t) <= 1000
+    body = [line for t in tables for line in t.splitlines()[2:]]
+    assert len(body) == 5000  # every row lands in exactly one piece
+    assert all(estimate_tokens(t) <= MAX_EMBED_TOKENS for _, t in chunks)
+
+
+def test_no_chunk_exceeds_embed_limit_even_without_spaces():
+    ex = extraction("fundsmith_factsheet_2026-01.pdf").model_copy(
+        update={"tables": [], "rows": [], "summary": "x" * 100_000}
+    )
+    chunks = chunk_texts(LoadedText("pdf", ["y" * 100_000]), ex.tables, ex)
+    assert all(estimate_tokens(t) <= MAX_EMBED_TOKENS for _, t in chunks)
+    assert sum(len(t) for k, t in chunks if k == ChunkKind.page) == 100_000
+
+
+def test_conflict_changes_only_touches_rows_that_flip():
+    current = {1: False, 2: True, 3: True, 4: False}
+    turn_on, turn_off = conflict_changes(current, {1, 2})
+    assert turn_on == {1}
+    assert turn_off == {3}
+
+
+def test_conflict_changes_no_op_when_unchanged():
+    assert conflict_changes({1: True, 2: False}, {1}) == (set(), set())
+
+
+class _RecordingSession:
+    def __init__(self, rows):
+        self.rows = rows
+        self.statements = []
+
+    def execute(self, stmt, params=None):
+        self.statements.append((stmt, params))
+        return self
+
+    def all(self):
+        return self.rows
+
+    def flush(self):
+        pass
+
+
+def test_mark_conflicts_takes_advisory_lock_and_writes_only_changes():
+    def full(id, doc, value, conflict):
+        c = cr(id, doc, value)
+        return (c.id, c.document_id, c.entity, c.share_class, c.measure, c.period_kind,
+                c.period_end, c.value, conflict)
+
+    session = _RecordingSession([full(1, 1, "0.0237", False), full(2, 2, "0.0235", True),
+                                 full(3, 3, "0.0500", True)])
+    # all three share an identity and differ, so all are flagged; only row 1 changes
+    flagged = mark_conflicts(session, user_id=7)
+    lock_stmt, lock_params = session.statements[0]
+    assert "pg_advisory_xact_lock(:user_id)" in str(lock_stmt)
+    assert lock_params == {"user_id": 7}
+    assert flagged == 3
+    updates = [str(s) for s, _ in session.statements[2:]]
+    assert len(updates) == 1 and "UPDATE common_row" in updates[0]
+    params = session.statements[2][0].compile().params
+    assert params["conflict"] is True and [1] in params.values()

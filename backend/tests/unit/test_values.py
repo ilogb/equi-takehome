@@ -31,6 +31,12 @@ D = Decimal
         ("-USD 1,000", None, ParsedValue(D("-1000"), "currency", "USD")),
         ("3.87%*", None, ParsedValue(D("0.0387"), "fraction", None)),
         ("usd 12", None, ParsedValue(D("12"), "currency", "USD")),
+        ("–0.45%", None, ParsedValue(D("-0.0045"), "fraction", None)),
+        ("— 1.2%", None, ParsedValue(D("-0.012"), "fraction", None)),
+        ("–$5m", None, ParsedValue(D("-5000000"), "currency", "USD")),
+        ("$5", "percent", ParsedValue(D("5"), "currency", "USD")),
+        ("USD 5", "percent", ParsedValue(D("5"), "currency", "USD")),
+        ("5", "percent", ParsedValue(D("0.05"), "fraction", None)),
     ],
 )
 def test_parse_value(text, hint, expected):
@@ -38,7 +44,7 @@ def test_parse_value(text, hint, expected):
 
 
 @pytest.mark.parametrize(
-    "text", ["n/a", "N/A", "n/m", "N/M", "", "  ", "-", "–", "—", "garbage"]
+    "text", ["n/a", "N/A", "n/m", "N/M", "", "  ", "-", "–", "—", " – ", "— ", "garbage"]
 )
 def test_parse_value_placeholders_return_none(text):
     assert parse_value(text, None) is None
