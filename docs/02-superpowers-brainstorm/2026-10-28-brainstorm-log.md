@@ -182,3 +182,43 @@ in the document?
 **Answer.** Yes: document only.
 **Outcome.** Each number links to its source document, not to a page or
 quote. Recommendation (page + quote) overruled.
+
+## Round 2 (Q9–Q12)
+
+### Q9 — Extraction LLM provider
+**Question.** Extraction (reading PDFs/emails/CSVs into tables) also needs an
+LLM. Same provider as Q&A?
+**Options.** OpenAI for everything (recommended) · Claude for extraction ·
+Pluggable, OpenAI default.
+**Answer.** Pluggable, OpenAI default.
+**Outcome.** One small provider interface for LLM calls, with OpenAI as the
+default; another provider can be swapped in through config.
+
+### Q10 — Q&A v1 shape
+**Question.** Q&A v1 using your own APIs as tools: how many calls can it make
+per question?
+**Options.** Small loop, max ~5 calls (recommended) · Single call · No LLM
+call planning.
+**Answer.** Small loop, max ~5 calls (Recommended).
+**Outcome.** The model picks GET endpoints from the OpenAPI spec, the server
+runs them, and the model may call again, up to about 5 calls, before
+answering.
+
+### Q11 — Who signs in to the deployment
+**Question.** Who signs in to the CapRover deployment? (It uses your OpenAI
+key and is on the public internet.)
+**Options.** Allowlist of Google accounts (recommended) · Only me, demo mode ·
+Anyone with the link.
+**Answer.** Allowlist of Google accounts (Recommended).
+**Outcome.** Google sign-in is the app login. Only allowlisted emails get in
+(the user plus Equi reviewers, who are also added as test users on the Google
+OAuth app). Each user sees only their own Drive data, so every row is scoped
+to a user.
+
+### Q12 — Auto-sync
+**Question.** Auto-sync: how should new files in the folder be noticed?
+**Options.** Poll every 60s + Sync now (recommended) · Push + poll fallback ·
+Manual only.
+**Answer.** Poll every 60s + Sync now (Recommended).
+**Outcome.** The Drive Changes API is polled every 60 s, plus a Sync now
+button. This behaves the same locally and on CapRover.
