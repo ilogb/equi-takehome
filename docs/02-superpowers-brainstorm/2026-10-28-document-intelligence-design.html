@@ -64,6 +64,7 @@ a { color: var(--accent); }
 <li><a href="#12-security">12. Security</a></li>
 <li><a href="#13-claudes-calls-please-check">13. Claude's calls (please check)</a></li>
 <li><a href="#14-open">14. Open</a></li>
+<li><a href="#spike-amendments-unapproved-2026-10-28">Spike amendments — UNAPPROVED (2026-10-28)</a></li>
 </ul>
 </div>
 </nav>
@@ -445,5 +446,69 @@ needs_review) · <code>chunk</code> (document, kind, text, tsvector, embedding v
 the row key <span class="call">Claude's call, §13 #9</span>, Google app status <span class="qref">Q30</span>, eval as a report
 <span class="qref">Q31</span>, CapRover deploy at the end <span class="qref">Q32</span>. Two things are left for the spike to
 confirm: unverified Production OAuth with <code>drive.readonly</code>, and the default
-OpenAI model ids.</p></article>
+OpenAI model ids.</p>
+<h2 id="spike-amendments-unapproved-2026-10-28">Spike amendments — UNAPPROVED (2026-10-28)</h2>
+<blockquote class="callout">
+<p>Everything above this heading is the spec as approved. These amendments
+come from the spike (<code>docs/03-implementation-plan/2026-10-28-spike-findings.md</code>,
+§E, with live evidence in §A and §C) and from decisions made after approval
+(Q34, Q35 and the port). Each one overrides the section it names. They need
+the user's approval before the plan relies on them.</p>
+</blockquote>
+<p><strong>A1 — Models (E1, confirmed live).</strong> Extraction <code>gpt-6.1-sol</code> (Responses
+API, PDF as <code>input_file</code>, strict <code>json_schema</code>). CSV/<code>.xlsx</code> column mapping
+and Ask <code>gpt-6.1-terra</code>. Embeddings <code>text-embedding-3-small</code>, 1536 dims.
+All configurable; an A/B of <code>gpt-6.1-terra</code> for extraction is a <code>make eval</code>
+run, not a code change.</p>
+<p><strong>A2 — Big documents (E2, revised live).</strong> Extraction is slow and large:
+measured 7 s (email) to 165 s (Fundsmith), up to 27k output tokens, about
+$0.01–0.30 per document. Set <code>max_output_tokens</code> high, a timeout of at least
+10 minutes, run 3–4 jobs at once, and treat an <code>incomplete</code> response as a
+retryable failure. The leaner row shape (model leaves out <code>value</code>; code parses
+<code>value_as_written</code>) cuts output by about 20% and is optional.</p>
+<p><strong>A3 — Placeholders (E3).</strong> <code>n/a</code>, <code>n/m</code>, blanks and dashes (<code>-</code>, en and em
+dash) produce no row.</p>
+<p><strong>A4 — CSV/<code>.xlsx</code> mapping (E4, confirmed live: Northwind 35/35, Alderbank
+29/29).</strong> The model sees the header, the first 20 and the last 5 lines. The
+mapping has per-column measure, period kind and unit, benchmark columns,
+header/footer rows to skip, and per-entity <code>period_end</code> overrides (for
+example a footnote's "YTD to 31 August").</p>
+<p><strong>A5 — Email HTML (E5).</strong> Layout tables that wrap other tables are unwrapped;
+only the innermost tables become rows. Without this, the Larchmont email's
+text comes out twice.</p>
+<p><strong>A6 — Google sign-in (E6, E7, Q34; confirmed live).</strong> The OAuth app stays in
+<strong>Testing</strong> mode, locally and on CapRover. Reviewers are added as test users
+(up to 100). Sign-ins expire after 7 days, and the Reconnect banner covers
+that. This replaces Q30 and §5's Production paragraph. The authorisation
+request sets <code>access_type=offline</code>, <code>prompt=consent</code> and a <code>state</code> value.
+Only <code>invalid_grant</code> sets <code>needs_reconnect</code>; Drive 403 and 429 responses are
+retried with backoff. If a token response has no refresh token, the stored one
+is kept.</p>
+<p><strong>A7 — Ask tools (E8, run).</strong> Every <code>ask</code> route declares an explicit
+<code>operation_id</code> and a docstring, and startup fails if one is missing. Tools are
+emitted with <code>strict: false</code> (optional parameters aren't strict-compatible).
+Calls run in-process through httpx <code>ASGITransport</code>, carrying an internal
+credential for the asking user.</p>
+<p><strong>A8 — Embeddings column (E9, run).</strong> <code>chunk.embedding</code> is <code>vector(1536)</code>
+with an HNSW cosine index. The migration runs <code>CREATE EXTENSION IF NOT EXISTS
+vector</code> first.</p>
+<p><strong>A9 — Dates and period kinds (E11, from the live run).</strong> The prompt states:
+a period's <code>period_end</code> is always the calendar end of that period (31 Jan,
+not a 30 Jan pricing date); a calendar-year figure is <code>period_kind = 1y</code>
+ending 31 Dec (the <code>calendar_year</code> value is removed from the enum); AUM, NAV
+and account values are <code>period_kind = other</code> dated at their as-of date. Code
+also snaps month, quarter, YTD and 1y period ends to the calendar end.</p>
+<p><strong>A10 — Eval matching (E12, from the live run).</strong> <code>make eval</code> matches
+leniently: entity and share class by normalised token containment (so
+<code>Fundsmith Equity Fund</code> matches <code>Fundsmith Equity</code>), period ends snapped to
+month end, then measure and period kind exact, value within 0.00005. On the
+live run that scores every extracted value correct (strict matching scored
+correct output as 0).</p>
+<p><strong>A11 — Subfolders <span class="qref">Q35</span>.</strong> The app reads every supported file anywhere
+below the chosen folder (replaces "top level only" in §3, §6 and §13 #2).
+Sync keeps a cached set of descendant folder ids and checks a changed file's
+<code>parents</code> against it, refreshing the set when a folder changes. The Library
+shows each file's path relative to the chosen folder.</p>
+<p><strong>A12 — Port.</strong> The API runs on port 8000. The local redirect URI is
+<code>http://localhost:8000/api/auth/google/callback</code> (already registered).</p></article>
 </div>

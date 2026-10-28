@@ -392,3 +392,80 @@ the row key (Claude's call, §13 #9), Google app status (Q30), eval as a report
 (Q31), CapRover deploy at the end (Q32). Two things are left for the spike to
 confirm: unverified Production OAuth with `drive.readonly`, and the default
 OpenAI model ids.
+
+
+## Spike amendments — UNAPPROVED (2026-10-28)
+
+> Everything above this heading is the spec as approved. These amendments
+> come from the spike (`docs/03-implementation-plan/2026-10-28-spike-findings.md`,
+> §E, with live evidence in §A and §C) and from decisions made after approval
+> (Q34, Q35 and the port). Each one overrides the section it names. They need
+> the user's approval before the plan relies on them.
+
+**A1 — Models (E1, confirmed live).** Extraction `gpt-6.1-sol` (Responses
+API, PDF as `input_file`, strict `json_schema`). CSV/`.xlsx` column mapping
+and Ask `gpt-6.1-terra`. Embeddings `text-embedding-3-small`, 1536 dims.
+All configurable; an A/B of `gpt-6.1-terra` for extraction is a `make eval`
+run, not a code change.
+
+**A2 — Big documents (E2, revised live).** Extraction is slow and large:
+measured 7 s (email) to 165 s (Fundsmith), up to 27k output tokens, about
+$0.01–0.30 per document. Set `max_output_tokens` high, a timeout of at least
+10 minutes, run 3–4 jobs at once, and treat an `incomplete` response as a
+retryable failure. The leaner row shape (model leaves out `value`; code parses
+`value_as_written`) cuts output by about 20% and is optional.
+
+**A3 — Placeholders (E3).** `n/a`, `n/m`, blanks and dashes (`-`, en and em
+dash) produce no row.
+
+**A4 — CSV/`.xlsx` mapping (E4, confirmed live: Northwind 35/35, Alderbank
+29/29).** The model sees the header, the first 20 and the last 5 lines. The
+mapping has per-column measure, period kind and unit, benchmark columns,
+header/footer rows to skip, and per-entity `period_end` overrides (for
+example a footnote's "YTD to 31 August").
+
+**A5 — Email HTML (E5).** Layout tables that wrap other tables are unwrapped;
+only the innermost tables become rows. Without this, the Larchmont email's
+text comes out twice.
+
+**A6 — Google sign-in (E6, E7, Q34; confirmed live).** The OAuth app stays in
+**Testing** mode, locally and on CapRover. Reviewers are added as test users
+(up to 100). Sign-ins expire after 7 days, and the Reconnect banner covers
+that. This replaces Q30 and §5's Production paragraph. The authorisation
+request sets `access_type=offline`, `prompt=consent` and a `state` value.
+Only `invalid_grant` sets `needs_reconnect`; Drive 403 and 429 responses are
+retried with backoff. If a token response has no refresh token, the stored one
+is kept.
+
+**A7 — Ask tools (E8, run).** Every `ask` route declares an explicit
+`operation_id` and a docstring, and startup fails if one is missing. Tools are
+emitted with `strict: false` (optional parameters aren't strict-compatible).
+Calls run in-process through httpx `ASGITransport`, carrying an internal
+credential for the asking user.
+
+**A8 — Embeddings column (E9, run).** `chunk.embedding` is `vector(1536)`
+with an HNSW cosine index. The migration runs `CREATE EXTENSION IF NOT EXISTS
+vector` first.
+
+**A9 — Dates and period kinds (E11, from the live run).** The prompt states:
+a period's `period_end` is always the calendar end of that period (31 Jan,
+not a 30 Jan pricing date); a calendar-year figure is `period_kind = 1y`
+ending 31 Dec (the `calendar_year` value is removed from the enum); AUM, NAV
+and account values are `period_kind = other` dated at their as-of date. Code
+also snaps month, quarter, YTD and 1y period ends to the calendar end.
+
+**A10 — Eval matching (E12, from the live run).** `make eval` matches
+leniently: entity and share class by normalised token containment (so
+`Fundsmith Equity Fund` matches `Fundsmith Equity`), period ends snapped to
+month end, then measure and period kind exact, value within 0.00005. On the
+live run that scores every extracted value correct (strict matching scored
+correct output as 0).
+
+**A11 — Subfolders (Q35).** The app reads every supported file anywhere
+below the chosen folder (replaces "top level only" in §3, §6 and §13 #2).
+Sync keeps a cached set of descendant folder ids and checks a changed file's
+`parents` against it, refreshing the set when a folder changes. The Library
+shows each file's path relative to the chosen folder.
+
+**A12 — Port.** The API runs on port 8000. The local redirect URI is
+`http://localhost:8000/api/auth/google/callback` (already registered).

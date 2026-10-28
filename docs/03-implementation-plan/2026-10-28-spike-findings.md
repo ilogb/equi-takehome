@@ -9,7 +9,7 @@ Throwaway code lives in the session scratchpad
 
 | Item | Result |
 |---|---|
-| **A. Live extraction runs (5 docs, real model)** | **NOT RUN. The `OPENAI_API_KEY` in the environment is rejected by OpenAI: `401 invalid_api_key` on `GET /v1/models`.** No latency, token, cost or accuracy numbers exist yet. Everything under A that does not need the model was run (schema, scoring, CSV/xlsx path, email cleaning, size estimates). The runner is ready: one command once the key is fixed (section A.7). |
+| **A. Live extraction runs** | **RUN (second pass, with a working key from `.env`).** 5 documents on `gpt-6.1-sol`, CSV mapping on `gpt-6.1-terra`, one embedding call; about $0.85 total. See section A (live run). Sections A.3 and A.7 below are the pre-run estimates and instructions, superseded by the measured numbers. |
 | B. Scanned detection | RUN. Rule flags only the image-only PDFs. |
 | C. Google OAuth + Drive | Docs-researched; **cannot be run without an OAuth client**. Unverified Production + `drive.readonly` is allowed in practice per Google's own cap wording, with a 100-user lifetime cap. Probe script written and compiles; the user must run it. |
 | D. Platform | RUN: pgvector + SQLAlchemy works; FastAPI in-process GET tools + OpenAPI-to-tool conversion works. CapRover is from docs only. |
@@ -109,6 +109,96 @@ It sends the 5 documents (Man AHL, Fundsmith Jan, UVic, Harborline as PDFs; Kest
 
 ---
 
+## A (live run) — measured 2026-10-28
+
+Key loaded from the repo `.env` with `load_dotenv(override=True)` (the shell variable was the invalid one); never printed. Models `gpt-6.1-sol` (extraction), `gpt-6.1-terra` (CSV mapping), `text-embedding-3-small`. Responses API, PDFs as base64 `input_file`, strict `json_schema` from `schema.py` (so **strict-schema acceptance, PDF + strict together, and the model ids are all confirmed**). Scripts: `live.py`, `live_csv.py`, `lenient.py`; raw outputs in `scratchpad/spike/out/`.
+
+### A.L1 Per document (current row shape, `gpt-6.1-sol`)
+
+| Document | Latency | Input tok | Output tok | Cost | Tables | Rows | Strict score | Lenient score |
+|---|---|---|---|---|---|---|---|---|
+| Man AHL factsheet (8 pp) | 101.6 s | 32,240 | 16,712 | $0.232 | 18 | 161 | 7/9 | **9/9** |
+| Man AHL, lean row shape | 88.2 s | 32,197 | 13,376 | $0.198 | 18 | 161 | 7/9 | **9/9** |
+| Fundsmith Jan (4 pp) | 165.0 s | 18,942 | 26,656 | $0.304 | 10 | 271 | 0/3 | **3/3** |
+| UVic report (2 pp) | 41.7 s | 7,096 | 6,727 | $0.081 | 2 | 76 | 0/9 | **9/9** |
+| Harborline statement (3 pp) | 13.8 s | 1,410 | 1,635 | $0.019 | 4 | 4 | 0/4 | **4/4** (precision 4/4) |
+| Kestrel email (cleaned text) | 7.4 s | 1,047 | 785 | $0.010 | 1 | 4 | 2/4 | 3/4 (precision 3/4) |
+
+Total extraction spend $0.85 including the lean run. Precision is only meaningful for the two non-partial truths: Harborline 4/4, Kestrel 3/4 (lenient). Real truths are `partial`, so extra rows (Man AHL 152 extra, Fundsmith 268, UVic 67) are valid observations beyond the pinned set, not errors.
+
+**Wrong values: zero.** Every truth value that was matched at all matched within 0.00005. Every miss under the strict §11 key is a convention mismatch, not a data error:
+1. **period_end of a month in the as-of report.** Man AHL August: truth `2026-08-31`, model `2026-08-28` (the report date). My prompt said "or printed date"; the spec's rule (period end = last day of the period) must be stated explicitly, and applied by code too (snap `month` rows to month end). Fundsmith: model used `2026-01-30` (price date), truth `2026-01-31`.
+2. **Entity and share class names.** Model: `Fundsmith Equity Fund` / `T Class Acc`; truth: `Fundsmith Equity` / `T Class EUR Acc`. UVic: model `Balanced Fund`, truth `UVic Money Purchase Pension Plan Balanced`. Harborline: model `Calder Family Office LLC · Account HC-4471-0093`, truth `Calder Family Office LLC (HC-4471-0093)`. The lenient scorer (entity token-subset, ignore currency words in share class, snap to month end, `calendar_year`~`1y`) removes all of these. Decision: **`make eval` must use that lenient matching** (or the matching key in §11 will report 0% on correct output).
+3. **Period-kind vocabulary.** Kestrel "calendar year 2025": model `calendar_year`, truth `1y`; Kestrel AUM: model `month`, truth `other`. The enum has two names for the same thing. See E11.
+4. **Manager metadata.** Man AHL: model `AHL Partners LLP`, truth `Man Group` (a metadata judgement; not scored by the matching rule).
+
+### A.L2 Row shape: current vs lean (Man AHL)
+Lean (rows reference `funds[]` by index, no `value`, shorter fields): 13,376 output tokens vs 16,712 (-20%), 88 s vs 102 s, $0.198 vs $0.232; identical recall (9/9 lenient) and identical 161 rows. Parsing `value` from `value_as_written` in code gave the same numbers. **So the gain is only about 20%, because the 18 printed tables, not the common rows, are most of the output. The "108 to 50 tokens per row" estimate was too optimistic.** Decision: lean shape is optional (nice, low risk, not a must). Larger lever: the tables.
+
+### A.L3 Size and latency reality
+- Estimated 20-25k output tokens for Man AHL; measured 16.7k (102 s). **Fundsmith is the heavy one: 26.7k output tokens and 165 s**, for a 4-page factsheet, because it prints a 16-row monthly table for every year and the model returned 271 rows. Expect up to about 3 minutes per document; the SDK default timeout (10 min) is enough but the worker must not use a short HTTP timeout, and "Sync" progress must show per-file status. With the Postgres job table one document at a time per worker, a 30-file folder takes up to roughly an hour; run 3-4 jobs concurrently (OpenAI rate limits were not an issue at this scale).
+- No `incomplete` or refusal in 6 calls with `max_output_tokens=100000`. Keep the incomplete-response handling anyway.
+- Input tokens: PDF page images are the bulk (Man AHL 32k input for 7k tokens of text; Fundsmith 19k for 5.9k text). About $0.03-0.06 input per document.
+- First call with a new schema: no visible extra latency penalty beyond the above.
+
+### A.L4 Printed tables
+- **Man AHL: faithful.** 18 tables returned (the spec said 6 tables / 158 rows: the spec counted the tables the user saw; the model also tables key facts, exposures, risk metrics, dealing terms). The Historical Performance grid has 11 rows (2016-2026); the 2026 row came back verbatim: `['2026','8.42%','5.12%','-3.75%','2.16%','0.79%','-1.14%','0.03%','2.25%','n/a','n/a','n/a','n/a','14.21%']`, `n/a` preserved in the table. Monthly return rows by year: 12 each for 2016-2025 and 9 for 2026 (Jan-Aug plus one; see trap below).
+- Fundsmith: 10 tables including the 16-row monthly performance table for T Class EUR Acc. UVic: both tables returned (2026: 7 body rows; 2025: 12). Header rows returned as arrays; the 2026/2025 label sits in the header row's first cell.
+- Not compared cell by cell against the PDFs (I checked the Man AHL 2026 row against the PDF text layer line 89 and the row counts); a full cell-level fidelity check needs a human or a diff script.
+
+### A.L5 Traps (from each truth file's `traps` list)
+
+**Man AHL**
+- Grid covers 2016-2026, earlier years are valid: **avoided** (all 10 earlier years extracted, 12 months each).
+- Sep-Dec 2026 `n/a` cells give no observation: **avoided** (no row after 2026-08-31, no `n/a` value_as_written; the table keeps the `n/a` strings).
+- Report dated 28 August 2026: **handled with a defect**: as-of date correct, but the August month return got `period_end 2026-08-28` (see A.L1 item 1). The 9-count shows 9 monthly 2026 rows, one of them the August one.
+
+**Fundsmith Jan**
+- As-of is 30 Jan (last pricing day), not month end: **as-of correct (`2026-01-30`), but month and YTD rows were dated 2026-01-30 instead of 2026-01-31**.
+- Comparators `Equities` / `EU Bonds` are not the fund: **avoided**: they appear as `benchmark_return` rows with `benchmark_name`, never as fund returns (benchmark names seen: IA Global sector, MSCI World, Bloomberg Euro Govt bond index, € interest rate).
+- "Best Month +10.9 (Oct'15)" and "Average Month" are statistics: **avoided** (no row containing best/average/Oct).
+
+**UVic**
+- Newest month first: **avoided** (19 monthly rows, correctly dated).
+- Page 2 is the 2025 table in an identical layout; months must be dated 2025: **avoided** (12 rows dated 2025, 7 dated 2026).
+- Rolling 4-year column has no period kind: **handled loosely**: emitted as `period_kind other` (19 rows). The truth left them out; they are extra, not wrong. Consider adding a `4y` kind or `rolling` to the enum, or leave `other`.
+
+**Harborline**
+- 1.62% and 7.84% are the account's returns: **avoided** (`entity_kind account`, measure `account_return`).
+- Holdings' Unrealized G/L % (+21.7%, +12.4%) must not become fund returns: **avoided** (4 rows total; none from holdings).
+- Market values per holding are not fund AUM: **avoided** (no such rows).
+- Negatives in parentheses (withdrawals and fees): **avoided** (no activity rows emitted).
+- Beginning value dated Aug 31, ending Sep 30: **avoided**.
+- `doc_type` came back `statement` as required.
+
+**Kestrel**
+- Net 1.90% is the return, gross 2.30% must not be stored: **avoided** (rows: 1.90%, benchmark 1.10%, 14.60%, $612m; no 2.30%).
+- Exposure figures (168%, 42%) are not returns: **avoided**.
+- `$612m` is 612,000,000: **avoided** (`612000000`), though with `period_kind month` instead of `other`.
+- "Calendar year 2025" is a 1y period ending 2025-12-31: **mostly**: period end right, kind named `calendar_year` instead of `1y`.
+- Same numbers in plain and HTML parts, extract once: **avoided** (4 rows; only the HTML part was sent).
+
+Larchmont (not in the requested set) was not run.
+
+### A.L6 CSV mapping on `gpt-6.1-terra` (header + first 20 rows + last 5 rows, with `period_end_overrides` in the schema)
+
+| File | Latency | Tokens in/out | Cost | Result |
+|---|---|---|---|---|
+| Northwind (long) | 2.9 s | 1,377 / 135 | $0.002 | **35/35**, 0 extra, 0 wrong |
+| Alderbank (wide) | 4.4 s | 1,018 / 295 | $0.003 | **29/29**, 0 extra, 0 wrong |
+
+The model found the header row (index 3), the footer prefixes (`*`, `Source:`), and produced the override `{"entity":"Alderbank Asia Income Fund","column":"YTD","period_end":"2026-08-31"}` from the footnote on its own. This resolves the one miss of the hand-written mapping (A.5): **E4 is confirmed and unchanged.** The mapping schema is strict-mode valid with the added `period_end_overrides` list.
+
+### A.L7 Embeddings
+`text-embedding-3-small` returned **1536 dimensions** (7 tokens for the test string). Decision stands.
+
+### A.L8 Model decisions after the run
+- `EXTRACT_MODEL=gpt-6.1-sol`: reads PDFs and tables correctly, zero wrong values on 5 documents. Not compared against Astra or Terra (budget); Terra on extraction remains untested, and could halve the cost and maybe latency, worth one A/B run later on `make eval`.
+- `MAPPING_MODEL=gpt-6.1-terra`: perfect on both CSVs; fine.
+- Ask-loop model untested (needs the app).
+
+---
+
 ## B. Scanned detection (§7.1) — RUN
 `scan.py`: pdfplumber `extract_text()` per page, rule "more than half the pages under 20 characters". I generated an image-only PDF with Pillow (30 lines of text drawn into a raster, 1 page and a 3-page copy).
 
@@ -204,15 +294,15 @@ Image `pgvector/pgvector:pg16` pulled and started (`PostgreSQL 16.15`, extension
 ## E. SPEC AMENDMENTS
 
 **E1 (§4 line 127-128, §13 #10): model ids.** Quote: "Exact default model ids are fixed during the spike against OpenAI's current docs, not guessed here."
-Proposed: "Defaults: `EXTRACT_MODEL=gpt-6.1-sol`, `ASK_MODEL=gpt-6.1-terra`, `MAPPING_MODEL=gpt-6.1-terra`, `EMBED_MODEL=text-embedding-3-small` at 1536 dimensions. All overridable by config. Responses API; PDFs sent as `input_file` base64. (Confirm with the first live run: ids exist for the account and `gpt-6.1-sol` accepts PDF + strict json_schema together.)"
+Proposed (**confirmed live**: ids exist, PDF input_file + strict json_schema work together, embeddings are 1536 dims): "Defaults: `EXTRACT_MODEL=gpt-6.1-sol`, `ASK_MODEL=gpt-6.1-terra`, `MAPPING_MODEL=gpt-6.1-terra`, `EMBED_MODEL=text-embedding-3-small` at 1536 dimensions. All overridable by config. Responses API; PDFs sent as `input_file` base64. (Confirm with the first live run: ids exist for the account and `gpt-6.1-sol` accepts PDF + strict json_schema together.)"
 
-**E2 (§7.2 line 208-214 and §7.3 line 232-234): shrink the output.** Quote: "`entity` (fund or account), `entity_kind` ..., `share_class` ... `value_as_written`, `value`, `unit`, `currency`, `benchmark_name`, and a pointer ..."
-Proposed: rows reference `funds[]` by `fund_index`; the model does not return `value` (code parses `value_as_written`, §7.3 already does and already prefers the parsed value). Add: "`max_output_tokens` is set to the model maximum, the client timeout is at least 10 minutes, and an `incomplete` response is treated as a retryable failure, not a repair case." Reason: estimated 20-25k output tokens for Man AHL at the current row shape (A.3). To be re-justified with measured numbers.
+**E2 (REVISED after the live run; §7.2 line 208-214 and §7.3).** Quote: "`entity` (fund or account), `entity_kind` ..., `share_class` ..., `value_as_written`, `value`, `unit`, `currency`, `benchmark_name`, and a pointer ..."
+Proposed: keep the current row shape (the lean `fund_index` shape saved only 20% of output: 13.4k vs 16.7k tokens, 88 s vs 102 s on Man AHL, same recall), optionally adopting it later. Make these mandatory: `max_output_tokens` at the model maximum (nothing was truncated at 100k); client timeout of at least 10 minutes (measured up to 165 s per document, Fundsmith); an `incomplete` response is a retryable failure, not a repair case; allow 3-4 concurrent jobs. Evidence: A.L1-A.L3.
 
 **E3 (§7.2 line 215-218 "Prompt rules"): add** "Percent values are returned as written; `n/a`, `n/m`, blanks and dash placeholders (`-`, en dash, em dash) produce no row." and add en/em dash to the §7.3 parser's no-value list. (Larchmont and Alderbank fixtures.)
 
 **E4 (§7.2 line 224-229, CSV/xlsx).** Quote: "The model sees the header and the first 20 rows and returns a column mapping (long or wide layout; which columns are entity, date, measure, value; unit; header and footer rows to skip)."
-Proposed: "The model sees the header region, the first 20 rows and the last 5 rows (footnotes), and returns a mapping with: layout; header row; skip-rows rule; entity and share-class columns; date column or wide month columns with a date format; a list of value columns each with `measure`, `period_kind`, `unit` (`percent_number | percent_string | fraction | currency`) and an optional `benchmark_name_column`; document currency; and per-entity `period_end` overrides taken from footnotes (for example the Alderbank Asia YTD ends 2026-08-31)." Evidence: A.5 (28/29 without the override; the one miss is exactly the footnote).
+Proposed: "The model sees the header region, the first 20 rows and the last 5 rows (footnotes), and returns a mapping with: layout; header row; skip-rows rule; entity and share-class columns; date column or wide month columns with a date format; a list of value columns each with `measure`, `period_kind`, `unit` (`percent_number | percent_string | fraction | currency`) and an optional `benchmark_name_column`; document currency; and per-entity `period_end` overrides taken from footnotes (for example the Alderbank Asia YTD ends 2026-08-31)." Evidence: A.5 (28/29 without the override; the one miss is exactly the footnote) and A.L6 (**confirmed live**: `gpt-6.1-terra` returned the override itself, 35/35 and 29/29).
 
 **E5 (§7.2 line 221-223): email/HTML cleaning.** Add: "Layout tables that wrap other tables are unwrapped; only innermost tables become pipe-delimited rows." Evidence: A.6 (Larchmont duplicated text without it).
 
@@ -225,13 +315,19 @@ Proposed: "Confirmed from Google's documentation (not yet from a live consent): 
 
 **E9 (§10, §7.4): embeddings.** Add: "`chunk.embedding` is `vector(1536)` with an HNSW cosine index; `text-embedding-3-large` is only usable with `dimensions=1536` because HNSW tops out at 2000 dimensions." Evidence: D.1.
 
+**E11 (NEW; §7.2 prompt rules and enum, §7.3, §11).** Quote (§7.2): "period end is the last day of the period" and the `period_kind` list "`month` · `qtd` · `ytd` · `1y` · `3y` · `5y` · `itd` · `calendar_year` · `other`".
+Proposed: (a) the prompt states: "For `month`, `qtd`, `ytd` and `calendar_year` rows the period end is the last day of that month, quarter or year, never the report or pricing date; a monthly `period_end` is always a calendar month end"; §7.3 also snaps `month` rows to month end in code. My live prompt said "or printed date" and produced `2026-08-28` (Man AHL) and `2026-01-30` (Fundsmith). (b) Remove `calendar_year`, using `1y` with `period_end` 31 Dec (or define `calendar_year` as a distinct, always-December-year-end kind and tell the model when to use each): the model chose `calendar_year` where the truth file says `1y`. (c) State that point-in-time measures (`aum`, `nav`, `account_value`) use `period_kind = other`: the model used `month` for AUM. (d) Consider a `rolling` / `4y` kind or keep `other` for UVic's Rolling 4 Year column. Evidence: A.L1 items 1 and 3, A.L5.
+
+**E12 (NEW; §11 Eval, line 347-349).** Quote: "A row matches on normalised entity, share class, measure, period kind and period end, with value tolerance 0.00005."
+Proposed: "Normalised" means: lower case, punctuation and the suffixes `LP/Ltd/LLC/Fund` removed, parenthesised or trailing account ids ignored, and entity match on token containment in either direction; share-class match ignores `class` and currency words (EUR/USD/GBP) and uses token containment; `period_end` for `month` rows is compared as a month end; period kinds `calendar_year` and `1y` are equivalent. Without this the strict key scored 0/3, 0/9 and 0/4 on Fundsmith, UVic and Harborline whose values were all correct (lenient: 3/3, 9/9, 4/4). Evidence: A.L1. Reference implementation: `scratchpad/spike/lenient.py`. Also relax the truth files' entity names where the document itself gives a shorter name (UVic).
+
 **E10 (§7.1): none needed.** Rule validated on all 7 fixture PDFs and generated scans (B).
 
 ---
 
 ## F. Still needs the user
 
-1. **A working `OPENAI_API_KEY`.** The one in the environment gets `401 invalid_api_key` from `GET /v1/models`. Then run the command in A.7 (about $0.3-0.6) and send me, or read, the printed table plus `out/*.json`. Until then the model choice, latency, cost, trap behaviour and strict-schema acceptance are unmeasured.
+1. ~~A working `OPENAI_API_KEY`.~~ Done: live run in section A (live run). Original note: The one in the environment gets `401 invalid_api_key` from `GET /v1/models`. Then run the command in A.7 (about $0.3-0.6) and send me, or read, the printed table plus `out/*.json`. Until then the model choice, latency, cost, trap behaviour and strict-schema acceptance are unmeasured.
 2. **A Google OAuth client** (steps C.4), with test users or Publish app. Then run the probe (section G) and check: (a) refresh token present, (b) `parents` populated on a file someone else put in the folder, (c) `poll 2` sees a dropped file as `IN_FOLDER`, (d) the warning screen text in Production.
 3. **CapRover access** for the last-step deploy (Q32): root domain, whether the swarm has one or several nodes (for the Postgres persistent directory), and a decision on a privacy-policy URL if the consent screen demands one.
 4. Decide E2 (leaner row shape) before the plan fixes the database columns; it changes `common_row` only slightly (a `fund_id` instead of repeated strings, which the data model already has).
@@ -353,10 +449,10 @@ with the OAuth app in **Testing** mode (Q34) and the user as a test user.
   Drive skips tokens and the token must always be taken from the response.
 - **Port clash found:** `localhost:8000` resolved to IPv6, where another
   local Docker app (`trust-ledger-api-1`) was listening; the probe was on
-  IPv4 `127.0.0.1:8000`. **Plan decision:** the app's API defaults to port
-  **8010**, and the local redirect URI uses **127.0.0.1**:
-  `http://127.0.0.1:8010/api/auth/google/callback` (to be added to the
-  Google client).
+  IPv4 `127.0.0.1:8000`. **User decision:** the app stays on port **8000**
+  ("our app should run on 8000"); the other local app is moved off it
+  instead. The registered redirect URI
+  `http://localhost:8000/api/auth/google/callback` is used unchanged.
 - **Python note:** `datetime.utcnow()` is deprecated (Python 3.12); use
   `datetime.now(UTC)`.
 
