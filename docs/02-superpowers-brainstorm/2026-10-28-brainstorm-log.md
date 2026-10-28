@@ -261,3 +261,49 @@ Unit tests only.
 **Outcome.** `make eval` runs extraction over the fixtures and scores the
 results against the `.truth.json` files (precision and recall per document).
 No judge model.
+
+## Round 4 (Q17–Q20)
+
+### Q17 — Metadata, confirming Q13
+**Question.** Is this right? Fixed fields (doc type, manager, fund, as-of
+date) drive the UI filters; free tags are stored and fed into vector search
+only, with no tag filter in the UI.
+**Answer (verbatim).**
+> correct and free form may show up as "tags" metadata under the result or file
+**Outcome.** Fixed fields drive the filters. Free-form tags feed vector search
+and are shown as "tags" under a search result or file, but aren't filterable.
+
+### Q18 — Roles / hiding files
+**Question.** Your notes mention an admin hiding files from search. What about
+the MVP?
+**Options.** No roles; each user can hide a doc (recommended) · Admin role in
+MVP · Nothing yet.
+**Answer.** Nothing yet.
+**Outcome.** No roles and no hiding in the MVP. Recommendation overruled.
+
+### Q19 — Uncertain or conflicting numbers
+**Question.** When extraction is unsure, or two documents disagree on the
+same fund and month, what does the user see?
+**Options.** Flag it (recommended) · Newest wins quietly · Ignore for MVP.
+**Answer.** Flag it (Recommended).
+**Outcome.** A "needs review" marker on doubtful numbers and a "sources
+differ" marker when documents disagree. Nothing is silently picked.
+
+### Q20 — MVP screens
+**Question.** Which screens are in the MVP? (multi-select)
+**Options.** Connect + pick folder · Library + search · Document view · Data
+table + Ask (all recommended).
+**Answer.** All four, plus (verbatim):
+> I think we need one unified search that either just returns simple search
+> results or a more complex question with data tables. For MVP we might have
+> a toggle that says "simple" search or something to denote "exact" just
+> simple find this in docs vs a more intelligent question
+**Outcome.** Screens: Connect + pick folder, Library, Document view, Data
+table. Search and Ask merge into **one search box with a mode toggle**:
+"Simple" finds text in documents (full-text + vector, with similar results);
+the intelligent mode answers a question and can return data tables, via the
+Q&A loop from Q10.
+
+## Next step
+A rendered UI mockup (per the user's global rule: mockup before spec), then
+the v2 spec, recording the chosen mockup variant.
