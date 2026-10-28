@@ -190,6 +190,27 @@ def test_poll_unsupported_new_file_stored_not_queued():
     assert (result.queued, result.ignored) == (0, 1)
 
 
+def test_poll_json_file_skipped_without_a_row():
+    src, folders, known = selected()
+    src.push_change(file("j1", "man-ahl.truth.json", "root", mime="application/json"))
+    changes, _ = src.list_changes("100")
+    rec = Recorder()
+    result = apply_changes(src, "root", changes, folders, known, rec)
+    assert rec.added == {}
+    assert (result.queued, result.ignored) == (0, 1)
+
+
+def test_rewalk_skips_ignored_files():
+    src, folders, known = selected()
+    src.expired_tokens.add("100")
+    src.items["j1"] = file("j1", "alderbank.truth.json", "synth", mime="application/json")
+    src.items["ds"] = file("ds", ".DS_Store", "real", mime="application/octet-stream")
+    src.items["py"] = file("py", "generate.py", "synth", mime="text/x-python")
+    rec = Recorder()
+    sync_step(src, "root", "100", folders, known, rec)
+    assert not {"j1", "ds", "py"} & rec.added.keys()
+
+
 def test_poll_same_new_file_twice_in_one_batch_queued_once():
     src, folders, known = selected()
     src.push_change(file("nf", "q3.pdf", "root"))

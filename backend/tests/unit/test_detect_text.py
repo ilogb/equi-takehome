@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from app.pipeline.detect import is_scanned, kind_for
+from app.pipeline.detect import is_ignored, is_scanned, kind_for
 from app.pipeline.text import TooManyPages, clean_html, eml_body, load_text
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -35,6 +35,24 @@ FIXTURES = ROOT / "fixtures"
 )
 def test_kind_for(mime, name, expected):
     assert kind_for(mime, name) == expected
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("man-ahl.truth.json", True),
+        ("EXPORT.JSON", True),
+        ("factsheet.pdf", False),
+        ("json", False),
+        ("notes.jsonl", False),
+        (".DS_Store", True),
+        (".ds_store", True),
+        ("generate.py", True),
+        ("happy.pyc", False),
+    ],
+)
+def test_is_ignored(name, expected):
+    assert is_ignored(name) is expected
 
 
 def test_fixture_pdfs_not_scanned():

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.jobs.queue import enqueue
 from app.models import FileStatus, Fund, FundAlias, SourceFile, User, WatchedFolder
-from app.pipeline.detect import kind_for
+from app.pipeline.detect import is_ignored, kind_for
 from app.sources.base import (
     DocumentSource,
     PageTokenExpired,
@@ -126,7 +126,9 @@ def _add_unseen(files: list[tuple[RemoteFile, str]], known: set[str], add_file: 
         if remote.id in known:
             continue
         known.add(remote.id)
-        if add_file(remote, path):
+        if is_ignored(remote.name):
+            result.ignored += 1
+        elif add_file(remote, path):
             result.queued += 1
         else:
             result.ignored += 1

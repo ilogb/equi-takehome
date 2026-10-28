@@ -21,6 +21,10 @@ _EXTENSION_KINDS: dict[str, FileKind] = {
     ".eml": "eml",
 }
 
+# Skipped at sync: no row, so they never show up as "unsupported" (fixture truth files and
+# scripts, macOS folder metadata). ".DS_Store" matches because the whole name is its "extension".
+_IGNORED_EXTENSIONS = {".json", ".py", ".ds_store"}
+
 _GOOGLE_NATIVE_PREFIX = "application/vnd.google-apps."
 
 _SCANNED_MIN_CHARS = 20
@@ -42,6 +46,12 @@ def kind_for(mime: str, name: str) -> FileKind | None:
         return kind
     dot = name.rfind(".")
     return _EXTENSION_KINDS.get(name[dot:].lower()) if dot >= 0 else None
+
+
+def is_ignored(name: str) -> bool:
+    """True for files sync skips entirely, by extension."""
+    dot = name.rfind(".")
+    return dot >= 0 and name[dot:].lower() in _IGNORED_EXTENSIONS
 
 
 def is_scanned(pages: list[str]) -> bool:
