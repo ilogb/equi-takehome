@@ -7,7 +7,7 @@ api:
 	cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 worker:
-	cd backend && uv run python -m app.worker
+	cd backend && uv run python -m app.jobs.worker
 
 web:
 	npm --prefix web run dev
@@ -16,7 +16,7 @@ test:
 	cd backend && uv run pytest tests/unit -v
 
 eval:
-	cd backend && uv run python -m evals.run
+	cd backend && uv run python -m evals.run_eval
 
 migrate:
 	cd backend && uv run alembic upgrade head
