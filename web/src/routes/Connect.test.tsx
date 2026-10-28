@@ -2,7 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, useLocation } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { useState } from 'react'
+import { describe, expect, it, vi } from 'vitest'
 import { QueryProvider } from '@/QueryProvider'
 import { server } from '@/test/server'
 import { Connect } from './Connect'
@@ -143,6 +144,55 @@ describe('C3 choosing a folder', () => {
   })
 })
 
+describe('returning to /connect after a first choice', () => {
+  it('still asks for confirmation before replacing the folder', async () => {
+    signedInNoFolder()
+    let chosen = false
+    let puts = 0
+    server.use(
+      http.get('/api/auth/me', () =>
+        HttpResponse.json({ email: 'a@example.com', name: 'A', needs_reconnect: false, has_folder: chosen }),
+      ),
+      http.get('/api/folder', () => HttpResponse.json(status({ done: 1 }))),
+      http.put('/api/folder', () => {
+        puts += 1
+        chosen = true
+        return HttpResponse.json(status({ done: 1 }))
+      }),
+    )
+    function Remountable() {
+      const [on, setOn] = useState(true)
+      return (
+        <>
+          <button onClick={() => setOn((v) => !v)}>toggle</button>
+          {on && <Connect />}
+        </>
+      )
+    }
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/connect']}>
+        <QueryProvider retry={false}>
+          <Remountable />
+        </QueryProvider>
+      </MemoryRouter>,
+    )
+    await user.click(await screen.findByRole('radio', { name: /taxes/i }))
+    await user.click(screen.getByRole('button', { name: /use this folder/i }))
+    await waitFor(() => expect(puts).toBe(1))
+    await screen.findByRole('progressbar')
+    await user.click(screen.getByRole('button', { name: 'toggle' }))
+    await user.click(screen.getByRole('button', { name: 'toggle' }))
+    await user.click(await screen.findByRole('button', { name: /change folder/i }))
+    await user.click(await screen.findByRole('radio', { name: /fund documents/i }))
+    await user.click(screen.getByRole('button', { name: /use this folder/i }))
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(puts).toBe(1)
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /replace folder/i }))
+    await waitFor(() => expect(puts).toBe(2))
+  })
+})
+
 describe('C4 first sync', () => {
   it('shows n of m processed (unsupported not counted) and polls until finished', async () => {
     signedInNoFolder()
@@ -165,7 +215,12 @@ describe('C4 first sync', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '5')
     expect(await screen.findByText('14 of 14 processed', {}, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open library/i })).toHaveAttribute('href', '/library')
-    await new Promise((r) => setTimeout(r, 2500))
+    vi.useFakeTimers()
+    try {
+      await vi.advanceTimersByTimeAsync(10_000)
+    } finally {
+      vi.useRealTimers()
+    }
     expect(calls).toBe(2)
   }, 15000)
 })

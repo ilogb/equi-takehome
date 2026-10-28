@@ -248,19 +248,21 @@ function FirstSync({ onChange }: { onChange: () => void }) {
 function SignedIn({ me }: { me: Me }) {
   const qc = useQueryClient()
   const [phase, setPhase] = useState<'choose' | 'sync'>(me.has_folder ? 'sync' : 'choose')
-  const [hadFolder, setHadFolder] = useState(me.has_folder)
+  const [hadFolder, setHadFolder] = useState(false)
+  const replacing = me.has_folder || hadFolder
   const currentName = qc.getQueryData<FolderStatus>(keys.folder)?.name
 
   if (phase === 'choose') {
     return (
       <FolderChooser
-        replacing={hadFolder}
+        replacing={replacing}
         currentName={currentName}
         onCancel={() => setPhase('sync')}
         onChosen={(status) => {
           // The old folder's data is gone server-side; drop every cached view of it.
           qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'folders' && q.queryKey[0] !== 'connect-me' })
           qc.setQueryData(keys.folder, status)
+          qc.setQueryData<Me>(['connect-me'], (m) => (m ? { ...m, has_folder: true } : m))
           setHadFolder(true)
           setPhase('sync')
         }}
