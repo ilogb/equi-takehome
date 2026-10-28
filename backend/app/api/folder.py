@@ -1,5 +1,7 @@
 """Folder selection and sync routes."""
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -10,10 +12,18 @@ from app.auth.google import drive_source_for
 from app.config import Settings
 from app.db import get_session
 from app.models import SourceFile, User, WatchedFolder
-from app.sources.base import DocumentSource
+from app.sources.base import DocumentSource, SourceError
 from app.sync.service import poll_user, select_folder
 
 router = APIRouter(prefix="/api")
+
+
+_DRIVE_ID = re.compile(r"[A-Za-z0-9_-]+")
+
+
+def is_valid_drive_id(value: str) -> bool:
+    """Drive ids are URL-safe base64-ish; anything else never reaches a Drive URL."""
+    return bool(_DRIVE_ID.fullmatch(value))
 
 
 class FolderChoice(BaseModel):
@@ -32,10 +42,18 @@ def put_folder(
     source: DocumentSource = Depends(user_source),
     session: Session = Depends(get_session),
 ) -> dict:
+    if not is_valid_drive_id(body.folder_id):
+        raise HTTPException(status_code=400, detail="invalid folder id")
     try:
         watched = select_folder(session, user, source, body.folder_id)
-    except ValueError as err:
-        raise HTTPException(status_code=400, detail=str(err)) from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="that id is not a folder") from None
+    except SourceError as err:
+        if err.status != 404:
+            raise
+        raise HTTPException(
+            status_code=400, detail="folder not found, or not shared with this Google account"
+        ) from None
     session.commit()
     return folder_status(session, user, watched)
 

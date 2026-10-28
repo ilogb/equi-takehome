@@ -15,6 +15,7 @@ from app.auth.google import IdentityExchange, authorization_url, is_allowed
 from app.config import Settings
 from app.db import get_session
 from app.models import User, WatchedFolder
+from app.sync.reconnect import requeue_after_reconnect
 
 log = logging.getLogger("auth")
 router = APIRouter(prefix="/api/auth")
@@ -65,12 +66,17 @@ def google_callback(
 
     email = identity.email.strip().lower()
     user = session.scalar(select(User).where(User.email == email))
+    existing = user is not None
     if user is None:
         user = User(email=email, needs_reconnect=False)
         session.add(user)
     if identity.refresh_token:
         user.refresh_token_enc = encrypt(settings, identity.refresh_token)
         user.needs_reconnect = False
+        if existing:
+            requeued = requeue_after_reconnect(session, user)
+            if requeued:
+                log.info("user %s reconnected: %d file(s) re-queued", user.id, requeued)
     elif user.refresh_token_enc is None:
         user.needs_reconnect = True
     session.commit()

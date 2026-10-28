@@ -249,3 +249,43 @@ def test_poll_new_file_in_existing_subfolder_gets_full_path():
     rec = Recorder()
     apply_changes(src, "root", changes, folders, known, rec)
     assert rec.added == {"nf": "docs/synthetic/q3.csv"}
+
+
+# --- fix round 1: folders leaving the tree ------------------------------------------
+
+
+def test_decide_watched_folder_leaving_tree():
+    folders = {"root", "docs", "real"}
+    moved_out = folder("real", "real", "other")
+    assert decide_change(ch(moved_out), folders, set(), root_id="root") is Action.remove_folder
+    trashed = type(moved_out)(**{**folder("real", "real", "docs").__dict__, "trashed": True})
+    assert decide_change(ch(trashed), folders, set(), root_id="root") is Action.remove_folder
+    assert decide_change(ch(removed_id="real"), folders, set(), root_id="root") is Action.remove_folder
+    # the root itself never leaves the set
+    assert decide_change(ch(folder("root", "R", "elsewhere")), folders, set(), root_id="root") is Action.ignore_known
+    # moved within the tree: still watched
+    assert decide_change(ch(folder("real", "real", "root")), folders, set(), root_id="root") is Action.ignore_known
+
+
+def test_folder_moved_out_then_new_file_in_it_not_enqueued():
+    src, folders, known = selected()
+    src.push_change(folder("docs", "docs", "other"))  # docs (with real, synthetic) moved out
+    src.push_change(file("nf", "late.pdf", "real"))  # new file in a folder no longer watched
+    changes, _ = src.list_changes("100")
+    rec = Recorder()
+    result = apply_changes(src, "root", changes, folders, known, rec)
+    assert rec.added == {}
+    assert folders == {"root"}
+    assert (result.queued, result.ignored) == (0, 2)
+
+
+def test_folder_moved_out_then_back_in_is_watched_again():
+    src, folders, known = selected()
+    src.push_change(folder("synth", "synthetic", "other"))
+    src.push_change(folder("synth", "synthetic", "root"))
+    src.push_change(file("nf", "q.pdf", "synth"))
+    changes, _ = src.list_changes("100")
+    rec = Recorder()
+    apply_changes(src, "root", changes, folders, known, rec)
+    assert rec.added == {"nf": "synthetic/q.pdf"}
+    assert "synth" in folders

@@ -18,7 +18,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.jobs.queue import enqueue
-from app.models import FileStatus, SourceFile, User, WatchedFolder
+from app.models import FileStatus, Fund, FundAlias, SourceFile, User, WatchedFolder
 from app.pipeline.detect import kind_for
 from app.sources.base import DocumentSource, PageTokenExpired, ReconnectRequired, RemoteChange, RemoteFile, SourceError
 
@@ -32,6 +32,7 @@ AddFile = Callable[[RemoteFile, str], bool]
 class Action(enum.Enum):
     enqueue_new = "enqueue_new"
     add_folder = "add_folder"
+    remove_folder = "remove_folder"
     ignore_known = "ignore_known"
     ignore_removed = "ignore_removed"
     ignore_outside = "ignore_outside"
@@ -51,10 +52,22 @@ class FolderSnapshot:
     files: list[tuple[RemoteFile, str]]
 
 
-def decide_change(change: RemoteChange, folder_ids: set[str], known_file_ids: set[str]) -> Action:
-    """What one Drive change means for the watched tree (`folder_ids` includes the root)."""
+def decide_change(
+    change: RemoteChange, folder_ids: set[str], known_file_ids: set[str], root_id: str | None = None
+) -> Action:
+    """What one Drive change means for the watched tree (`folder_ids` includes the root).
+
+    A watched folder (other than the root) that is removed, trashed or moved out of the tree
+    leaves the set, so files dropped into it later are not picked up. Its existing file rows
+    stay (Q24).
+    """
     f = change.file
-    if change.removed or f is None or f.trashed:
+    gone = change.removed or f is None or f.trashed
+    if change.file_id in folder_ids and change.file_id != root_id:
+        if gone or not folder_ids.intersection(f.parents):
+            return Action.remove_folder
+        return Action.ignore_known
+    if gone:
         return Action.ignore_removed
     if change.file_id in known_file_ids or change.file_id in folder_ids:
         return Action.ignore_known
@@ -157,7 +170,7 @@ def apply_changes(
     result = SyncResult()
     paths: dict[str, str] = {root_id: ""}
     for change in changes:
-        action = decide_change(change, folder_ids, known_file_ids)
+        action = decide_change(change, folder_ids, known_file_ids, root_id)
         f = change.file
         if action is Action.add_folder:
             assert f is not None
@@ -167,6 +180,13 @@ def apply_changes(
             sub_folders, sub_files = walk_folder(source, f.id, prefix)
             folder_ids.update(sub_folders)
             _add_unseen(sub_files, known_file_ids, add_file, result)
+        elif action is Action.remove_folder:
+            # Drop it and everything under it: re-walk the folders from the root. Files found
+            # by the walk are not added here; new ones arrive as their own changes.
+            walked, _ = walk_folder(source, root_id)
+            folder_ids.intersection_update(walked)
+            paths = {k: v for k, v in paths.items() if k in folder_ids}
+            result.ignored += 1
         elif action is Action.enqueue_new:
             assert f is not None
             parent = next(p for p in f.parents if p in folder_ids)
@@ -246,11 +266,14 @@ def initial_sync(session: Session, user: User, files: list[tuple[RemoteFile, str
 
 def select_folder(session: Session, user: User, source: DocumentSource, folder_id: str) -> WatchedFolder:
     """Watch `folder_id` for `user`. Changing to a different folder deletes that user's files
-    (and, by cascade, documents, rows, chunks and jobs) first."""
+    (and, by cascade, documents, rows, chunks and jobs) and funds first."""
     snap = snapshot_folder(source, folder_id)  # token first, then the walk
     watched = session.scalar(select(WatchedFolder).where(WatchedFolder.user_id == user.id).with_for_update())
     if watched is not None and watched.drive_folder_id != folder_id:
+        # Cascades to documents, rows, tables, chunks and jobs; funds are per user, so go too.
         session.execute(delete(SourceFile).where(SourceFile.user_id == user.id))
+        session.execute(delete(FundAlias).where(FundAlias.user_id == user.id))
+        session.execute(delete(Fund).where(Fund.user_id == user.id))
     if watched is None:
         watched = WatchedFolder(user_id=user.id, drive_folder_id=folder_id, name=snap.folder.name)
         session.add(watched)

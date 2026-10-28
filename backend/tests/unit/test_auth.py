@@ -7,14 +7,20 @@ from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from google.auth.exceptions import RefreshError
 
+from app.api import auth as auth_api
+from app.api.folder import is_valid_drive_id
 from app.auth.crypto import AuthConfigError, decrypt, encrypt, require_auth_config
-from app.auth.deps import get_identity_exchange
+from app.auth.deps import current_user, get_identity_exchange, user_source
 from app.auth.google import GoogleIdentity, credentials_for, is_allowed
 from app.config import Settings
 from app.db import get_session
 from app.main import create_app
 from app.models import User
 from app.sources.base import ReconnectRequired, SourceError
+from app.sync.reconnect import failed_by_reconnect
+from tests.fakes import FakeDriveSource
+from tests.fakes import file as rfile
+from tests.fakes import folder as rfolder
 
 FERNET = Fernet.generate_key().decode()
 
@@ -250,3 +256,68 @@ def test_auth_routes_fail_clearly_without_secrets():
     resp = client.get("/api/auth/google/start")
     assert resp.status_code == 500
     assert "SESSION_SECRET" in resp.json()["detail"]
+
+
+# --- reconnect requeue, folder id validation, PUT /api/folder errors --------------------
+
+
+
+def test_failed_by_reconnect_selection():
+    assert failed_by_reconnect("failed", "Google access was revoked or expired; reconnect required")
+    assert failed_by_reconnect("failed", "no Google refresh token stored; reconnect required")
+    assert not failed_by_reconnect("failed", "Drive HTTP 404: File not found")
+    assert not failed_by_reconnect("failed", None)
+    assert not failed_by_reconnect("done", "reconnect required")
+
+
+def test_reconnect_message_is_what_selection_matches():
+    assert failed_by_reconnect("failed", str(ReconnectRequired()))
+
+
+def test_callback_requeues_after_reconnect(monkeypatch):
+    s = settings()
+    existing = User(id=3, email="allowed@example.com", refresh_token_enc=encrypt(s, "old"), needs_reconnect=True)
+    db = FakeSession(existing_user=existing)
+    calls = []
+    monkeypatch.setattr(auth_api, "requeue_after_reconnect", lambda session, user: calls.append(user.id) or 0)
+    client = client_for(db, GoogleIdentity("allowed@example.com", "A", True, "new"), s)
+    state = start(client)
+    client.get("/api/auth/google/callback", params={"state": state, "code": "c"})
+    assert calls == [3]
+    assert existing.needs_reconnect is False
+
+
+def test_drive_id_validation():
+    assert is_valid_drive_id("1vMG2qvqZ5h74hzdyOstiUwGpslMobKhc")
+    assert is_valid_drive_id("a_b-C")
+    for bad in ["", "../x", "a/b", "a?alt=media", "a b", "a'b", "a%2F"]:
+        assert not is_valid_drive_id(bad)
+
+
+def folder_client(src: FakeDriveSource) -> TestClient:
+    app = create_app(settings())
+    user = User(id=1, email="allowed@example.com", needs_reconnect=False)
+    app.dependency_overrides[get_session] = lambda: FakeSession(existing_user=user)
+    app.dependency_overrides[current_user] = lambda: user
+    app.dependency_overrides[user_source] = lambda: src
+    return TestClient(app)
+
+
+def test_put_folder_rejects_bad_id():
+    src = FakeDriveSource(items=[rfolder("root", "R")])
+    resp = folder_client(src).put("/api/folder", json={"folder_id": "../files?alt=media"})
+    assert resp.status_code == 400
+    assert src.calls == []  # never reached Drive
+
+
+def test_put_folder_not_found_is_400():
+    resp = folder_client(FakeDriveSource()).put("/api/folder", json={"folder_id": "missing123"})
+    assert resp.status_code == 400
+    assert "not found" in resp.json()["detail"].lower()
+
+
+def test_put_folder_on_a_file_is_400():
+    src = FakeDriveSource(items=[rfolder("root", "R"), rfile("f1", "a.pdf", "root")])
+    resp = folder_client(src).put("/api/folder", json={"folder_id": "f1"})
+    assert resp.status_code == 400
+    assert "not a folder" in resp.json()["detail"].lower()

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.auth.crypto import decrypt, require_auth_config
 from app.config import Settings
 from app.models import User
-from app.sources.base import ReconnectRequired, SourceError
+from app.sources.base import RECONNECT_MARKER, ReconnectRequired, SourceError
 from app.sources.drive import GoogleDriveSource, is_invalid_grant
 
 # Google answers "email" as ".../userinfo.email" and may reorder scopes; without this
@@ -119,7 +119,7 @@ def credentials_for(
     """
     if not user.refresh_token_enc:
         mark_needs_reconnect(session, user)
-        raise ReconnectRequired("no Google refresh token stored; reconnect required")
+        raise ReconnectRequired(f"no Google refresh token stored; {RECONNECT_MARKER}")
     creds = Credentials(
         token=None,
         refresh_token=decrypt(settings, user.refresh_token_enc),

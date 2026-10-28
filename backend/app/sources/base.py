@@ -36,10 +36,14 @@ class SourceError(Exception):
         self.status = status
 
 
+# Every ReconnectRequired message ends with this; a file failed with it is re-queued on sign-in.
+RECONNECT_MARKER = "reconnect required"
+
+
 class ReconnectRequired(SourceError):
     """The stored Google grant is gone (invalid_grant): the user must sign in again."""
 
-    def __init__(self, message: str = "Google access was revoked or expired; reconnect required"):
+    def __init__(self, message: str = f"Google access was revoked or expired; {RECONNECT_MARKER}"):
         super().__init__(message, retryable=False, status=401)
 
 

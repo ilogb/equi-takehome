@@ -3,7 +3,7 @@
 from collections.abc import Iterator
 from pathlib import Path
 
-from app.sources.base import FOLDER_MIME, PageTokenExpired, RemoteChange, RemoteFile
+from app.sources.base import FOLDER_MIME, PageTokenExpired, RemoteChange, RemoteFile, SourceError
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "fixtures"
@@ -55,6 +55,8 @@ class FakeDriveSource:
     # --- DocumentSource -----------------------------------------------------
     def get_folder(self, folder_id: str) -> RemoteFile:
         self.calls.append("get_folder")
+        if folder_id not in self.items:
+            raise SourceError("Drive HTTP 404: File not found", retryable=False, status=404)
         return self.items[folder_id]
 
     def list_children(self, folder_id: str) -> list[RemoteFile]:
