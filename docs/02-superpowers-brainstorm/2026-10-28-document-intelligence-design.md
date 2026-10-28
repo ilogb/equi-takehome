@@ -353,6 +353,12 @@ needs_review) · `chunk` (document, kind, text, tsvector, embedding vector) ·
    are two series, never merged and never flagged as "sources differ"
    (builder check).
 10. Default OpenAI model ids decided in the spike from current docs.
+11. **Re-extract** replaces that document's tables, common rows and chunks
+    (no history kept). It is disabled when the file is no longer in Drive; the
+    app learns that when the viewer's stream from Drive fails.
+12. Two documents that agree on the same fund, share class, measure and
+    period give two common rows, both shown in the Data table with their
+    sources. No marker, since they agree; Ask counts the value once.
 
 ## 14. Open
 
