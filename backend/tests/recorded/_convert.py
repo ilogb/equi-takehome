@@ -83,7 +83,7 @@ def convert_mapping(stem: str, m: dict) -> dict:
     prefixes = tuple(m["skip_footer_starting_with"])
     skip_bottom = 0
     if prefixes:
-        first = next(i for i, l in enumerate(lines) if i > m["header_row_index"] and l.startswith(prefixes))
+        first = next(i for i, ln in enumerate(lines) if i > m["header_row_index"] and ln.startswith(prefixes))
         while first > 0 and not lines[first - 1].strip(", "):
             first -= 1  # blank spacer lines above the footnotes
         skip_bottom = len(lines) - first

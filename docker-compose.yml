@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: app
       POSTGRES_DB: app
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -16,7 +16,7 @@ services:
       retries: 10
 
   api:
-    build: ./backend  # Dockerfile arrives in Task 22
+    build: ./backend
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://app:app@db:5432/app
@@ -27,7 +27,7 @@ services:
         condition: service_healthy
 
   worker:
-    build: ./backend  # Dockerfile arrives in Task 22
+    build: ./backend
     command: python -m app.jobs.worker
     env_file: .env
     environment:
@@ -37,7 +37,9 @@ services:
         condition: service_healthy
 
   web:
-    build: ./web  # Dockerfile + nginx proxy of /api to api:8000 arrive in Task 22
+    build: ./web
+    environment:
+      API_UPSTREAM: api:8000
     ports:
       - "5173:80"
     depends_on:

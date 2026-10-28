@@ -9,7 +9,14 @@ import requests
 from google.auth.exceptions import RefreshError, TransportError
 from google.auth.transport.requests import AuthorizedSession
 
-from app.sources.base import FOLDER_MIME, PageTokenExpired, ReconnectRequired, RemoteChange, RemoteFile, SourceError
+from app.sources.base import (
+    FOLDER_MIME,
+    PageTokenExpired,
+    ReconnectRequired,
+    RemoteChange,
+    RemoteFile,
+    SourceError,
+)
 
 API = "https://www.googleapis.com/drive/v3"
 FILE_FIELDS = "id,name,mimeType,parents,trashed"

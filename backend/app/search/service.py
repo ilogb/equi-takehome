@@ -11,8 +11,8 @@ from sqlalchemy import Select, func, select, type_coerce
 from sqlalchemy.orm import Session
 
 from app.llm.base import LLMProvider
-from app.pipeline.funds import fund_key
 from app.models import EMBEDDING_DIMS, Chunk, Document, SourceFile
+from app.pipeline.funds import fund_key
 
 log = logging.getLogger(__name__)
 

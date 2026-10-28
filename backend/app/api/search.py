@@ -9,7 +9,7 @@ from app.auth.deps import current_user
 from app.db import get_session
 from app.llm.base import LLMProvider
 from app.models import User
-from app.search.service import SearchHit, simple_search, similar_documents
+from app.search.service import SearchHit, similar_documents, simple_search
 
 router = APIRouter(prefix="/api")
 

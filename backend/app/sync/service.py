@@ -20,7 +20,14 @@ from sqlalchemy.orm import Session
 from app.jobs.queue import enqueue
 from app.models import FileStatus, Fund, FundAlias, SourceFile, User, WatchedFolder
 from app.pipeline.detect import kind_for
-from app.sources.base import DocumentSource, PageTokenExpired, ReconnectRequired, RemoteChange, RemoteFile, SourceError
+from app.sources.base import (
+    DocumentSource,
+    PageTokenExpired,
+    ReconnectRequired,
+    RemoteChange,
+    RemoteFile,
+    SourceError,
+)
 
 log = logging.getLogger("sync")
 

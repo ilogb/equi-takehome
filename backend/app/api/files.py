@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from app.auth.deps import current_user, user_source
 from app.db import get_session
 from app.jobs.queue import enqueue
-from app.pipeline.text import eml_part
 from app.models import CommonRow, Document, SourceFile, User
+from app.pipeline.text import eml_part
 from app.sources.base import DocumentSource, SourceError
 
 router = APIRouter(prefix="/api")

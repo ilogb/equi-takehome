@@ -9,7 +9,6 @@ import sys
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
