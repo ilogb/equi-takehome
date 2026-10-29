@@ -135,17 +135,47 @@ How the design evolved, v0 to v3 ([docs/README.md](docs/README.md)):
 - v2 [brainstorm log](docs/02-superpowers-brainstorm/2026-10-28-brainstorm-log.md), [spec](docs/02-superpowers-brainstorm/2026-10-28-document-intelligence-design.md), [UI mockup](docs/02-superpowers-brainstorm/2026-10-28-document-intelligence-mockup.html)
 - v3 [spike findings](docs/03-implementation-plan/2026-10-28-spike-findings.md), [implementation plan](docs/03-implementation-plan/2026-10-28-document-intelligence-plan.md)
 
+## What's built
+
+Measured against the brief and my [brainstorm](docs/01-human-brainstorm/2026-10-28-human-brainstorm.md).
+
+| | Area | What it does |
+|---|---|---|
+| ✅ | Google Drive sync | Sign in with Google (OAuth), pick a folder; it and every subfolder are watched |
+| ✅ | Automatic pickup | New files dropped into Drive are processed within a minute, from Drive's change feed |
+| ✅ | Any document format | PDFs, HTML emails, .eml, CSV and xlsx, with no parser to configure per document |
+| ✅ | LLM extraction | Returns, benchmark returns, AUM, NAV and account values, stored in Postgres |
+| ✅ | Spreadsheet mapping | An LLM maps each CSV/xlsx's columns, then the rows are read directly |
+| ✅ | Source tables | Tables found in each document are shown on its page |
+| ✅ | Data table | Every number from every document, filtered by fund, measure and period |
+| ✅ | Review flags | Values that look wrong, or that two documents report differently, are flagged |
+| ✅ | Find | Semantic search (pgvector, cosine similarity) with the Drive path and similar documents |
+| ✅ | Analyze | Plain-English questions answered with tools built from the app's own API, citing source files |
+| ✅ | Landing dashboard | Document status, data point totals, latest 1-year returns vs benchmark, and AUM |
+| ✅ | Document pages | Readable, bookmarkable URLs and a one-click open of the original PDF |
+| ✅ | Background worker | Postgres job queue with leases and retries |
+| ✅ | Pluggable sources | Drive sits behind a `DocumentSource` interface, ready for Dropbox and others |
+| ✅ | Guardrails | Strict output schemas, Analyze scoped to your own data, an email allow-list |
+| ✅ | Tests | 333 backend and 134 web unit tests, plus real example documents in `fixtures/` |
+| ✅ | Extraction eval | `make eval` scores extraction against hand-checked answers, with token cost |
+| ✅ | One-command run | `docker compose up --build` |
+
 ## What I would change next
 
-- **An MCP server.** Expose the parsed data to Slack, Claude and other MCP clients. The groundwork is there: Analyze already builds its tools from the API routes tagged `analyze` (`backend/app/analyze/tools.py`), so the same routes can be served as MCP tools.
-- **An always-on ingestion agent.** Pull new documents around the clock from sources beyond Google Drive (email inboxes, fund administrator portals, shared folders) into the same extraction pipeline.
-- **Integration tests.** Only unit tests exist; integration tests were deferred by decision: [deferred-integration-tests.md](docs/03-implementation-plan/deferred-integration-tests.md).
-- **Stuck jobs after a worker restart.** A job a worker was holding when it stopped waits out its 45-minute lease before another worker picks it up. A heartbeat with a short lease would recover it in about a minute.
-- **Drive edits and deletes.** After the first sync, changed or deleted files in Drive are ignored (Q24); I would follow Drive's change feed and re-extract or remove them.
-- **Scanned PDFs.** They are flagged, not extracted; add OCR.
-- **Inline PDF viewer.** PDFs open in a new browser tab; I would bring back a side-by-side viewer that highlights where each number came from.
-- **Units and periods.** AUM printed with "(M)" (iShares) is stored without the millions multiplier, and 3- and 6-month returns are stored as period "other" rather than their own kinds.
-- **Google sign-in.** The app is in Google's Testing mode, so refresh tokens last a week and you reconnect weekly; moving to a verified app removes that.
-- **Eval results.** `make eval` runs, but its results aren't written up here yet.
-- **pnpm.** Switch the web app from npm to pnpm for faster, stricter installs (lockfile, Dockerfile and Makefile together).
-- **Hosted deploy.** It runs locally with Docker Compose only.
+| Next step | Why |
+|---|---|
+| **MCP server** | Expose the parsed data to Slack, Claude and other MCP clients. Analyze already builds its tools from the API routes tagged `analyze` (`backend/app/analyze/tools.py`), so the same routes can be served as MCP tools. |
+| **Always-on ingestion agent** | Pull new documents around the clock from sources beyond Google Drive (email inboxes, fund administrator portals, shared folders) into the same pipeline. |
+| **Roles and permissions** | Admins who can hide files from search, and view-only access per fund or folder for fund managers. Today every allowed user sees everything. |
+| **More folders and sources** | Several watched folders, and Dropbox or other services through the existing `DocumentSource` interface. |
+| **Drive edits and deletes** | After the first sync, changed or deleted files are ignored (Q24); follow Drive's change feed to re-extract or remove them. |
+| **Caching** | Cache LLM calls and backend results (the web app already caches), so repeat questions are instant and cheaper. |
+| **LLM-as-judge evals** | Add model-graded checks (deepeval) on top of today's exact-answer eval, and write up the eval results. |
+| **Integration and end-to-end tests** | Unit tests cover the logic; integration tests were deferred by decision ([deferred-integration-tests.md](docs/03-implementation-plan/deferred-integration-tests.md)). |
+| **Faster recovery after a worker restart** | A job held by a stopped worker waits out its 45-minute lease; a heartbeat with a short lease would recover it in about a minute. |
+| **Inline PDF viewer** | Bring back a side-by-side viewer that highlights where each number came from. |
+| **Scanned PDFs** | They are flagged today; add OCR to extract them. |
+| **Units and periods** | Apply the millions multiplier for AUM printed with "(M)" (iShares), and give 3- and 6-month returns their own period kinds. |
+| **Verified Google app** | Testing mode makes you reconnect weekly; a verified app removes that. |
+| **pnpm** | Faster, stricter installs for the web app (lockfile, Dockerfile and Makefile together). |
+| **Hosted deploy** | It runs locally with Docker Compose today. |
