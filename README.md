@@ -7,6 +7,31 @@ and browse them with the source document alongside, and answers questions
 
 **Privacy: documents you connect are sent to OpenAI for extraction, mapping, embeddings and Analyze.**
 
+## What's built
+
+Measured against the brief and my [brainstorm](docs/01-human-brainstorm/2026-10-28-human-brainstorm.md).
+
+| | Area | What it does |
+|---|---|---|
+| ✅ | Google Drive sync | Sign in with Google (OAuth), pick a folder; it and every subfolder are watched |
+| ✅ | Automatic pickup | New files dropped into Drive are processed within a minute, from Drive's change feed |
+| ✅ | Any document format | PDFs, HTML emails, .eml, CSV and xlsx, with no parser to configure per document |
+| ✅ | LLM extraction | Returns, benchmark returns, AUM, NAV and account values, stored in Postgres |
+| ✅ | Spreadsheet mapping | An LLM maps each CSV/xlsx's columns, then the rows are read directly |
+| ✅ | Source tables | Tables found in each document are shown on its page |
+| ✅ | Data table | Every number from every document, filtered by fund, measure and period |
+| ✅ | Review flags | Values that look wrong, or that two documents report differently, are flagged |
+| ✅ | Find | Semantic search (pgvector, cosine similarity) with the Drive path and similar documents |
+| ✅ | Analyze | Plain-English questions answered with tools built from the app's own API, citing source files |
+| ✅ | Landing dashboard | Document status, data point totals, latest 1-year returns vs benchmark, and AUM |
+| ✅ | Document pages | Readable, bookmarkable URLs and a one-click open of the original PDF |
+| ✅ | Background worker | Postgres job queue with leases and retries |
+| ✅ | Pluggable sources | Drive sits behind a `DocumentSource` interface, ready for Dropbox and others |
+| ✅ | Guardrails | Strict output schemas, Analyze scoped to your own data, an email allow-list |
+| ✅ | Tests | 333 backend and 134 web unit tests, plus real example documents in `fixtures/` |
+| ✅ | Extraction eval | `make eval` scores extraction against hand-checked answers, with token cost |
+| ✅ | One-command run | `docker compose up --build` |
+
 ## Quick start
 
 Get the app running locally in about 10 minutes.
@@ -134,31 +159,6 @@ How the design evolved, v0 to v3 ([docs/README.md](docs/README.md)):
 - v1 [human brainstorm](docs/01-human-brainstorm/2026-10-28-human-brainstorm.md)
 - v2 [brainstorm log](docs/02-superpowers-brainstorm/2026-10-28-brainstorm-log.md), [spec](docs/02-superpowers-brainstorm/2026-10-28-document-intelligence-design.md), [UI mockup](docs/02-superpowers-brainstorm/2026-10-28-document-intelligence-mockup.html)
 - v3 [spike findings](docs/03-implementation-plan/2026-10-28-spike-findings.md), [implementation plan](docs/03-implementation-plan/2026-10-28-document-intelligence-plan.md)
-
-## What's built
-
-Measured against the brief and my [brainstorm](docs/01-human-brainstorm/2026-10-28-human-brainstorm.md).
-
-| | Area | What it does |
-|---|---|---|
-| ✅ | Google Drive sync | Sign in with Google (OAuth), pick a folder; it and every subfolder are watched |
-| ✅ | Automatic pickup | New files dropped into Drive are processed within a minute, from Drive's change feed |
-| ✅ | Any document format | PDFs, HTML emails, .eml, CSV and xlsx, with no parser to configure per document |
-| ✅ | LLM extraction | Returns, benchmark returns, AUM, NAV and account values, stored in Postgres |
-| ✅ | Spreadsheet mapping | An LLM maps each CSV/xlsx's columns, then the rows are read directly |
-| ✅ | Source tables | Tables found in each document are shown on its page |
-| ✅ | Data table | Every number from every document, filtered by fund, measure and period |
-| ✅ | Review flags | Values that look wrong, or that two documents report differently, are flagged |
-| ✅ | Find | Semantic search (pgvector, cosine similarity) with the Drive path and similar documents |
-| ✅ | Analyze | Plain-English questions answered with tools built from the app's own API, citing source files |
-| ✅ | Landing dashboard | Document status, data point totals, latest 1-year returns vs benchmark, and AUM |
-| ✅ | Document pages | Readable, bookmarkable URLs and a one-click open of the original PDF |
-| ✅ | Background worker | Postgres job queue with leases and retries |
-| ✅ | Pluggable sources | Drive sits behind a `DocumentSource` interface, ready for Dropbox and others |
-| ✅ | Guardrails | Strict output schemas, Analyze scoped to your own data, an email allow-list |
-| ✅ | Tests | 333 backend and 134 web unit tests, plus real example documents in `fixtures/` |
-| ✅ | Extraction eval | `make eval` scores extraction against hand-checked answers, with token cost |
-| ✅ | One-command run | `docker compose up --build` |
 
 ## What I would change next
 
