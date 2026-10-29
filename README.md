@@ -137,6 +137,8 @@ How the design evolved, v0 to v3 ([docs/README.md](docs/README.md)):
 
 ## What I would change next
 
+- **An MCP server.** Expose the parsed data to Slack, Claude and other MCP clients. The groundwork is there: Analyze already builds its tools from the API routes tagged `analyze` (`backend/app/analyze/tools.py`), so the same routes can be served as MCP tools.
+- **An always-on ingestion agent.** Pull new documents around the clock from sources beyond Google Drive (email inboxes, fund administrator portals, shared folders) into the same extraction pipeline.
 - **Integration tests.** Only unit tests exist; integration tests were deferred by decision: [deferred-integration-tests.md](docs/03-implementation-plan/deferred-integration-tests.md).
 - **Stuck jobs after a worker restart.** A job a worker was holding when it stopped waits out its 45-minute lease before another worker picks it up. A heartbeat with a short lease would recover it in about a minute.
 - **Drive edits and deletes.** After the first sync, changed or deleted files in Drive are ignored (Q24); I would follow Drive's change feed and re-extract or remove them.
