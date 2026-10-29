@@ -29,7 +29,7 @@ Measured against the brief and my [brainstorm](docs/01-human-brainstorm/2026-10-
 | ✅ | Pluggable sources | Drive sits behind a `DocumentSource` interface, ready for Dropbox and others |
 | ✅ | Guardrails | Strict output schemas, Analyze scoped to your own data, an email allow-list |
 | ✅ | Tests | 333 backend and 134 web unit tests, plus real example documents in `fixtures/` |
-| ✅ | Extraction eval | `make eval` scores extraction against hand-checked answers, with token cost |
+| ✅ | Extraction eval | `make eval` scores extraction against hand-checked answers: **108/108 expected values found** ([results](docs/04-build/2026-10-29-extraction-eval.md)) |
 | ✅ | One-command run | `docker compose up --build` |
 
 ## Quick start
@@ -148,7 +148,7 @@ Only to run without Docker, or to run the tests:
 |---|---|
 | `make install` | Install dependencies for running without Docker: `uv sync` (backend) and `npm --prefix web ci` (web) |
 | `make test` | Backend unit tests (no network, no DB). Web: `npm --prefix web test -- --run` |
-| `make eval` | Live extraction eval against the fixtures. Calls OpenAI, costs about $1-2. **Results: pending.** |
+| `make eval` | Live extraction eval against the fixtures. Calls OpenAI, about 7 minutes and $0.76. [Latest results](docs/04-build/2026-10-29-extraction-eval.md) |
 | `make migrate` | `alembic upgrade head` (the API container also does this on boot) |
 
 ## Design history
@@ -170,7 +170,7 @@ How the design evolved, v0 to v3 ([docs/README.md](docs/README.md)):
 | **More folders and sources** | Several watched folders, and Dropbox or other services through the existing `DocumentSource` interface. |
 | **Drive edits and deletes** | After the first sync, changed or deleted files are ignored (Q24); follow Drive's change feed to re-extract or remove them. |
 | **Caching** | Cache LLM calls and backend results (the web app already caches), so repeat questions are instant and cheaper. |
-| **LLM-as-judge evals** | Add model-graded checks (deepeval) on top of today's exact-answer eval, and write up the eval results. |
+| **LLM-as-judge evals** | Add model-graded checks (deepeval) on top of today's exact-answer eval, and fill in the truth files that list only a sample. |
 | **Integration and end-to-end tests** | Unit tests cover the logic; integration tests were deferred by decision ([deferred-integration-tests.md](docs/03-implementation-plan/deferred-integration-tests.md)). |
 | **Faster recovery after a worker restart** | A job held by a stopped worker waits out its 45-minute lease; a heartbeat with a short lease would recover it in about a minute. |
 | **Inline PDF viewer** | Bring back a side-by-side viewer that highlights where each number came from. |
