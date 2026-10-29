@@ -135,10 +135,15 @@ How the design evolved, v0 to v3 ([docs/README.md](docs/README.md)):
 - v2 [brainstorm log](docs/02-superpowers-brainstorm/2026-10-28-brainstorm-log.md), [spec](docs/02-superpowers-brainstorm/2026-10-28-document-intelligence-design.md), [UI mockup](docs/02-superpowers-brainstorm/2026-10-28-document-intelligence-mockup.html)
 - v3 [spike findings](docs/03-implementation-plan/2026-10-28-spike-findings.md), [implementation plan](docs/03-implementation-plan/2026-10-28-document-intelligence-plan.md)
 
-## Known gaps
+## What I would change next
 
-- Integration tests are deferred by decision: [deferred-integration-tests.md](docs/03-implementation-plan/deferred-integration-tests.md). Only unit tests exist.
-- Scanned PDFs are flagged, not extracted (no OCR).
-- Edits and deletes of files in Drive are ignored after the first sync (Q24).
-- Google Testing mode means refresh tokens last a week: reconnect weekly.
-- `make eval` results are pending.
+- **Integration tests.** Only unit tests exist; integration tests were deferred by decision: [deferred-integration-tests.md](docs/03-implementation-plan/deferred-integration-tests.md).
+- **Stuck jobs after a worker restart.** A job a worker was holding when it stopped waits out its 45-minute lease before another worker picks it up. A heartbeat with a short lease would recover it in about a minute.
+- **Drive edits and deletes.** After the first sync, changed or deleted files in Drive are ignored (Q24); I would follow Drive's change feed and re-extract or remove them.
+- **Scanned PDFs.** They are flagged, not extracted; add OCR.
+- **Inline PDF viewer.** PDFs open in a new browser tab; I would bring back a side-by-side viewer that highlights where each number came from.
+- **Units and periods.** AUM printed with "(M)" (iShares) is stored without the millions multiplier, and 3- and 6-month returns are stored as period "other" rather than their own kinds.
+- **Google sign-in.** The app is in Google's Testing mode, so refresh tokens last a week and you reconnect weekly; moving to a verified app removes that.
+- **Eval results.** `make eval` runs, but its results aren't written up here yet.
+- **pnpm.** Switch the web app from npm to pnpm for faster, stricter installs (lockfile, Dockerfile and Makefile together).
+- **Hosted deploy.** It runs locally with Docker Compose only.
