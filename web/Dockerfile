@@ -1,4 +1,4 @@
-# Build context is the repo root (compose and CapRover both use it).
+# Build context is the repo root (docker compose uses it).
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY web/package.json web/package-lock.json ./

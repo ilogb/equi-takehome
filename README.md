@@ -126,12 +126,6 @@ Only to run without Docker, or to run the tests:
 | `make eval` | Live extraction eval against the fixtures. Calls OpenAI, costs about $1-2. **Results: pending.** |
 | `make migrate` | `alembic upgrade head` (the API container also does this on boot) |
 
-## Deploy
-
-CapRover: see [deploy/caprover/README.md](deploy/caprover/README.md). The definitions are
-`captain-definition-api`, `captain-definition-worker` and `captain-definition-web` at the repo
-root. The `web` app proxies `/api`, so the Google redirect URI is on the web app's domain.
-
 ## Design history
 
 How the design evolved, v0 to v3 ([docs/README.md](docs/README.md)):

@@ -1,4 +1,4 @@
-# Build context is the repo root (compose and CapRover both use it).
+# Build context is the repo root (docker compose uses it).
 FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /usr/local/bin/uv
 RUN groupadd --system app && useradd --system --gid app --home-dir /app app
