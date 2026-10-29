@@ -29,7 +29,7 @@ Measured against the brief and my [brainstorm](docs/01-human-brainstorm/2026-10-
 | ✅ | Pluggable sources | Drive sits behind a `DocumentSource` interface, ready for Dropbox and others |
 | ✅ | Guardrails | Strict output schemas, Analyze scoped to your own data, an email allow-list |
 | ✅ | Tests | 333 backend and 134 web unit tests, plus real example documents in `fixtures/` |
-| ✅ | Extraction eval | `make eval` scores extraction against hand-checked answers: **108/108 expected values found** ([results](docs/04-build/2026-10-29-extraction-eval.md)) |
+| ✅ | Extraction eval | `make eval` scores extraction against hand-checked answers: **108/108 expected values found** ([results](eval_results.md)) |
 | ✅ | One-command run | `docker compose up --build` |
 
 ## Extraction eval results
@@ -45,7 +45,7 @@ statements, CSVs and emails) and scores every number against hand-checked answer
 | ✅ Trap: holding gains misread as fund returns | 0 |
 | Run | 7 min 23 s, about $0.76 in OpenAI tokens |
 
-Full per-document results: [2026-10-29-extraction-eval.md](docs/04-build/2026-10-29-extraction-eval.md).
+Full per-document results: [eval_results.md](eval_results.md).
 
 ## Quick start
 
@@ -163,7 +163,7 @@ Only to run without Docker, or to run the tests:
 |---|---|
 | `make install` | Install dependencies for running without Docker: `uv sync` (backend) and `npm --prefix web ci` (web) |
 | `make test` | Backend unit tests (no network, no DB). Web: `npm --prefix web test -- --run` |
-| `make eval` | Live extraction eval against the fixtures. Calls OpenAI, about 7 minutes and $0.76. [Latest results](docs/04-build/2026-10-29-extraction-eval.md) |
+| `make eval` | Live extraction eval against the fixtures. Calls OpenAI, about 7 minutes and $0.76. [Latest results](eval_results.md) |
 | `make migrate` | `alembic upgrade head` (the API container also does this on boot) |
 
 ## Design history
