@@ -41,7 +41,7 @@ statements, CSVs and emails) and scores every number against hand-checked answer
 |---|---|
 | ✅ Expected values found | **108 / 108 (100%)** |
 | ✅ Recall by measure | return 83/83, benchmark return 20/20, account return 2/2, account value 2/2, AUM 1/1 |
-| ✅ Precision on fully listed files | 100% on 4 of 5 (custody statement 57%: holding prices also stored as NAV) |
+| ✅ Precision on fully listed files | 100% on 4 of 5 (the custody statement scores 57% because it also picked up 3 fund prices that weren't on the answer list) |
 | ✅ Trap: holding gains misread as fund returns | 0 |
 | Run | 7 min 23 s, about $0.76 in OpenAI tokens |
 

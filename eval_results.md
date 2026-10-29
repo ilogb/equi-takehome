@@ -35,15 +35,30 @@
 
 ## Reading the numbers
 
-- **Partial truth files.** The three real factsheets list only a sample of their values, so
-  rows beyond that sample are not errors and precision is not scored ("n/a"). The extras the
-  eval prints for them are real values the sample did not list, for example each Fundsmith share
-  class's NAV and Man AHL's AUM and 1- and 3-year returns.
-- **Harborline 57%.** The three extras are the per-unit prices of holdings in the custody
-  statement (Man AHL, Fundsmith, Vanguard), stored as NAV. They are real prices printed in the
-  document, but the truth file does not count them, so they lower precision.
-- **Period "other".** Several extras use period kind `other` (for example monthly or
-  since-inception figures); see "Units and periods" in the README's next steps.
+**Two words first.**
+- **Recall:** of the numbers we expected the app to find, how many it found. 108 of 108 means it missed nothing.
+- **Precision:** of the numbers the app found, how many were on our answer list. Anything not on the list counts against it, even if it's correct.
+
+**Why three files say "n/a".** The Fundsmith, Man AHL and UVic reports are real, long documents
+with hundreds of numbers. Their answer lists hold only a sample of them, so we can't score
+precision there. The "EXTRA" lines under them are just other numbers from the same report (for
+example each Fundsmith share class's price), not mistakes.
+
+**Why the Harborline statement is 57%.** This is a bank-style statement for one client's
+account. Our answer list has 4 numbers about the account: its value at the start and end of
+September, and its return for September and for the year. The app found all 4. It also picked
+up 3 more: the price of one unit of each fund the client holds, for example Man AHL at
+$312.44. Those prices really are printed on the statement, and a fund's price per unit is its
+NAV, so they aren't wrong. They just weren't on the answer list, so the score counts them as
+extras: 4 expected out of 7 found = 57%.
+
+**The trap it avoided.** The same statement shows how much each holding has gained since the
+client bought it (+21.7% and +12.4%). Those are the client's gains, not the funds' returns, and
+the app correctly did not store them as fund returns (0 leaks).
+
+**Period "other".** Some extras are labelled `other` for the period (for example monthly or
+since-launch figures) because they have no specific period kind yet; see "Units and periods" in
+the README's next steps.
 
 ## Raw output
 
