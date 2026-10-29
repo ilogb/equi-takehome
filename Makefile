@@ -1,4 +1,8 @@
-.PHONY: dev api worker web test eval migrate keys
+.PHONY: install dev api worker web test eval migrate keys
+
+install:
+	cd backend && uv sync
+	npm --prefix web ci
 
 dev:
 	docker compose up --build

@@ -113,13 +113,15 @@ Only to run without Docker, or to run the tests:
 3. Run it:
    - Docker: `make dev` (compose: db, api, worker, web), then open http://localhost:5173.
      If host port 5432 is taken, use `DB_PORT=5433 make dev`.
-   - Without Docker: a Postgres with pgvector on :5432, then `make migrate`, and in
-     three shells `make api`, `make worker`, `make web`.
+   - Without Docker: a Postgres with pgvector on :5432, then `make install` (Python and
+     npm dependencies), `make migrate`, and in three shells `make api`, `make worker`,
+     `make web`.
 
 ## Commands
 
 | | |
 |---|---|
+| `make install` | Install dependencies for running without Docker: `uv sync` (backend) and `npm --prefix web ci` (web) |
 | `make test` | Backend unit tests (no network, no DB). Web: `npm --prefix web test -- --run` |
 | `make eval` | Live extraction eval against the fixtures. Calls OpenAI, costs about $1-2. **Results: pending.** |
 | `make migrate` | `alembic upgrade head` (the API container also does this on boot) |
