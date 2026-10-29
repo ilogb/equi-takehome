@@ -3,6 +3,74 @@
 `make eval` run on 2026-10-29: extraction model `gpt-6.1-sol`, mapping model `gpt-6.1-terra`,
 8 fixtures with hand-checked truth files.
 
+## What the test is
+
+The test asks one question: **when the app reads a fund document, does it pull out the right numbers?**
+
+1. **We wrote an answer key by hand.** For each test document, a person read it and listed the
+   numbers that should come out: which fund, what kind of number, which period, and the value.
+   Each answer key is a `.truth.json` file next to its document in `fixtures/`.
+2. **We call the LLM.** `make eval` sends each document through the same extraction code the app
+   uses (the real OpenAI model, not a fake), and gets back the numbers the model found.
+3. **We compare the two lists.** Every number on the answer key is checked against what the model
+   returned, and the report shows what it got right, what it missed, and what extra numbers it found.
+
+### One answer, in plain words
+
+This is one entry from the Harborline statement's answer key:
+
+| Field | Value | Meaning |
+|---|---|---|
+| fund | Calder Family Office LLC (HC-4471-0093) | Whose number it is (here, a client account) |
+| metric | `account_return` | What kind of number: a return, NAV, AUM, account value... |
+| period_kind | `month` | Over what period: month, year to date, 1 year, 3 years... |
+| period_end | 2026-09-30 | When that period ends |
+| value | 0.0162 | The number itself: 1.62%, stored as a fraction |
+| where | p1 Account Performance, September 2026 | Where a person can find it in the document |
+
+In the file it looks like this:
+
+```json
+{
+  "fund": "Calder Family Office LLC (HC-4471-0093)",
+  "share_class": null,
+  "metric": "account_return",
+  "period_kind": "month",
+  "period_end": "2026-09-30",
+  "value": "0.0162",
+  "unit": "fraction",
+  "where": "p1 Account Performance, September 2026"
+}
+```
+
+### When does a number count as found?
+
+The model's number matches an answer when all of these agree:
+
+- **Same kind of number and period:** a September return can't match a year-to-date return.
+- **Same value**, to 4 decimal places (1.62% must come back as 0.0162, not 1.62).
+- **Same month:** 30 Jan and 31 Jan count as the same month-end.
+- **Same fund**, allowing for small naming differences: "Northwind Global Macro Fund, L.P." matches
+  "Northwind Global Macro".
+- **Same share class**, when both sides name one.
+
+### The test documents and what each one tests
+
+Three are real published reports; five are made up to contain specific traps.
+
+| Document | Type | Answers | What makes it hard |
+|---|---|---|---|
+| fundsmith_factsheet_2026-01.pdf | Real PDF factsheet | 3 (sample) | Dated 30 Jan, the last pricing day, not the month-end |
+| man-ahl_factsheet_2026-08.pdf | Real PDF factsheet | 9 (sample) | A grid of monthly returns going back to 2016 |
+| uvic-pension_performance-report_2026-07.pdf | Real PDF report | 9 (sample) | Newest month listed first |
+| alderbank_performance-summary_2026-09.csv | Made-up CSV | 29 | Junk rows above the header and footnotes below the data |
+| harborline-custody_account-statement_2026-09.pdf | Made-up PDF statement | 4 | Returns belong to the client's account, not to any fund; holding gains must not become fund returns |
+| kestrel-ridge_investor-update_2026-01.eml | Made-up email | 4 | Must take the net return (1.90%), not the gross one (2.30%) |
+| larchmont-quay_q3-letter_fwd_2026-10.eml | Made-up forwarded email | 15 | The sender is not the manager |
+| northwind-capital_monthly-returns_2026-09.csv | Made-up CSV | 35 | Returns written as 2.37 under a "%" header mean 2.37%, i.e. 0.0237 |
+
+Every answer key also lists its traps in plain English under `"traps"`.
+
 ## Summary
 
 - **Recall: 108 of 108 expected values found (100%)**, across every document and every measure.
