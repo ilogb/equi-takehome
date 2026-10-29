@@ -32,6 +32,21 @@ Measured against the brief and my [brainstorm](docs/01-human-brainstorm/2026-10-
 | ✅ | Extraction eval | `make eval` scores extraction against hand-checked answers: **108/108 expected values found** ([results](docs/04-build/2026-10-29-extraction-eval.md)) |
 | ✅ | One-command run | `docker compose up --build` |
 
+## Extraction eval results
+
+`make eval` runs the real extraction pipeline over 8 fixtures (real factsheets plus synthetic
+statements, CSVs and emails) and scores every number against hand-checked answers.
+
+| Result | |
+|---|---|
+| ✅ Expected values found | **108 / 108 (100%)** |
+| ✅ Recall by measure | return 83/83, benchmark return 20/20, account return 2/2, account value 2/2, AUM 1/1 |
+| ✅ Precision on fully listed files | 100% on 4 of 5 (custody statement 57%: holding prices also stored as NAV) |
+| ✅ Trap: holding gains misread as fund returns | 0 |
+| Run | 7 min 23 s, about $0.76 in OpenAI tokens |
+
+Full per-document results: [2026-10-29-extraction-eval.md](docs/04-build/2026-10-29-extraction-eval.md).
+
 ## Quick start
 
 Get the app running locally in about 10 minutes.
